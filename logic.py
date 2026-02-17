@@ -139,6 +139,13 @@ def estimate_sai_band(
         return (3001, 4500), "low_need"
     return (4501, 999999), "very_low_need"
 
+def band_label(bands, key):
+    return label_for_key(bands, key)
+
+def format_pell_range(est: Dict[str, Any]):
+    lo, hi = est["pell_range"]
+    return f"${lo:,}–${hi:,}"
+
 def sai_band_to_pell_percent(sai_min, sai_max):
     """
     returns (min_percent, max_percent) of max Pell
@@ -273,17 +280,174 @@ def get_tuition(school):
         "tuition_out_of_state": out_state,
         "tuition_best_guess": tuition,
     }
+ 
+ # scripts
+def bank_statement_script():
+    return (
+        "**Bank statement script (phone or chat):**\n"
+        "“Hi — I need my most recent checking and savings statements for a financial aid application. "
+        "Can you tell me how to download PDF statements from online banking? If I can’t access online banking, "
+        "can you mail them or make printed copies available at a branch?”\n\n"
+        "**Have ready:** name, address on file, phone/email on file, and any verification your bank uses.\n"
+        "**Don’t share:** full account numbers, PINs, or passwords."
+    )
+
+
+def missing_docs_checklist():
+    return (
+        "**Common FAFSA documents (college students):**\n"
+        "- Student info + contact details\n"
+        "- Tax info (you and/or parent, depending on dependency)\n"
+        "- Current bank balances (you and/or parent)\n"
+        "- Records of untaxed income (if applicable)\n"
+        "- List of schools to receive FAFSA\n\n"
+        "If you’re missing something, tell me which one: **tax info** or **bank statements/balances**."
+    )
+
+
+def fafsa_steps_overview():
+    return (
+        "**FAFSA application steps (high-level):**\n"
+        "1) Create your account/login\n"
+        "2) Start the FAFSA for the right academic year\n"
+        "3) Add your school list\n"
+        "4) Answer dependency + household questions\n"
+        "5) Enter income + asset info (use ranges if needed)\n"
+        "6) Sign and submit\n"
+        "7) Watch for follow-ups: verification, school portal requests\n\n"
+        "If you tell me whether you’re **independent** or **dependent**, I’ll tailor the checklist."
+    )
+
+# conversation router
+def route_message(state: user_data, user_text: str):
+    text = (user_text or "").strip()
+    low = text.lower()
+
+    if contains_sensitive_text(text):
+        return safety_text
+
+    # mode switching keywords
+    if any(k in low for k in ["estimate", "how much", "pell", "project", "range"]):
+        state.mode = "estimate"
+        # reset estimate fields
+        state.independent = None
+        state.household_size = None
+        state.income_range = None
+        state.asset_range = None
+
+        return (
+            "Got it — I’ll give a **range-based estimate**.\n\n"
+            "1) Are you **independent** for FAFSA purposes? (yes/no)\n"
+            "2) What’s your **household size**? (number)\n"
+            "3) Choose your **income range** (reply with the key):\n"
+            + "\n".join([f"- {k}: {label}" for k, label in income_ranges])
+            + "\n\n4) Choose your **assets range** (reply with the key):\n"
+            + "\n".join([f"- {k}: {label}" for k, label in asset_ranges])
+        )
+
+    if any(k in low for k in ["bank", "statement", "statements", "call", "documents", "docs"]):
+        state.mode = "documents"
+        return missing_docs_checklist() + "\n\n" + bank_statement_script()
+
+    if any(k in low for k in ["apply", "start fafsa", "fill out", "submit", "walk me through"]):
+        state.mode = "apply"
+        return fafsa_steps_overview()
+
+    # handle estimate mode inputs
+    if state.mode == "estimate":
+        if state.independent is None:
+            if "yes" in low:
+                state.independent = True
+                return "Thanks. What’s your **household size**? (number like 1, 2, 3...)"
+            if "no" in low:
+                state.independent = False
+                return "Thanks. What’s your **household size**? (number like 2, 3, 4...)"
+            return "Please reply **yes** or **no**: are you **independent** for FAFSA purposes?"
+
+        if state.household_size is None:
+            try:
+                digits = "".join(ch for ch in text if ch.isdigit())
+                hs = int(digits)
+                if hs <= 0 or hs > 20:
+                    return "Household size should be a reasonable number (like 1–10). What’s yours?"
+                state.household_size = hs
+                return (
+                    "Got it. Choose your **income range** by key:\n"
+                    + "\n".join([f"- {k}: {label}" for k, label in income_ranges])
+                )
+            except Exception:
+                return "What’s your household size? (number only, like 3)"
+
+        if state.income_range is None:
+            keys = [k for k, _ in income_ranges]
+            chosen = next((k for k in keys if k in low), None)
+            if not chosen:
+                return (
+                    "Pick one income band key exactly:\n"
+                    + "\n".join([f"- {k}: {label}" for k, label in income_ranges])
+                )
+            state.income_range = chosen
+            return (
+                "Thanks. Now choose your **assets range** by key:\n"
+                + "\n".join([f"- {k}: {label}" for k, label in asset_ranges])
+            )
+
+        if state.asset_range is None:
+            keys = [k for k, _ in asset_ranges]
+            chosen = next((k for k in keys if k in low), None)
+            if not chosen:
+                return (
+                    "Pick one assets band key exactly:\n"
+                    + "\n".join([f"- {k}: {label}" for k, label in asset_ranges])
+                )
+            state.asset_range = chosen
+
+            est = estimate_from_state(state)
+
+            return (
+                "**Your range-based estimate (not official):**\n"
+                f"- Pell likelihood: **{est['pell_likelihood']}**\n"
+                f"- Pell range: **{format_pell_range(est)}**\n\n"
+                f"Inputs used: household={state.household_size}, "
+                f"income={band_label(income_ranges, state.income_range)}, "
+                f"assets={band_label(asset_ranges, state.asset_range)}, "
+                f"{'independent' if state.independent else 'dependent'}.\n\n"
+                "If you want, tell me: **are you missing tax info or bank statements?** "
+                "I can give next steps and scripts."
+            )
+
+        return "Want to re-estimate? Say **estimate** again, or ask about **documents** / **apply**."
+
+    # apply mode
+    if state.mode == "apply":
+        return (
+            fafsa_steps_overview()
+            + "\n\nTo tailor this: are you **independent** (yes/no) and do you have **tax info** available (yes/no)?"
+        )
+
+    # documents mode
+    if state.mode == "documents":
+        return missing_docs_checklist() + "\n\n" + bank_statement_script()
+
+    # default
+    return (
+        "I can help with:\n"
+        "- **Apply to FAFSA** (step-by-step)\n"
+        "- **Estimate aid (ranges)**\n"
+        "- **Documents + bank call scripts**\n\n"
+        "Reply with one: **apply**, **estimate**, or **documents**."
+    )
 
 if __name__ == "__main__":
-    # quick test
-    state = user_data(
-        independent=True,
-        household_size=2,
-        income_range="20_40k",
-        asset_range="1_5k",
-        award_year="2026-27",
-        enrollment="full_time",
-    )
-    print(estimate_from_state(state))
+    state = user_data()
+    print("Type: estimate / apply / documents. Type quit to exit.\n")
+    while True:
+        msg = input("> ")
+        if msg.strip().lower() in {"quit", "exit"}:
+            break
+        print(route_message(state, msg))
+        print()
+
+
 
 
