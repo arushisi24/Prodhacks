@@ -1,12 +1,9 @@
 import os
 # from openai import OpenAI
 from dataclasses import dataclass
+from dataclasses import asdict
 from typing import Optional, Dict, Any, Tuple, Literal
 import requests
-
-# WHO IS BUYING TOKENS
-# api_key = os.getenv("OPENAI_API_KEY")
-# client = OpenAi(api_key = api_key)
 
 # client protection
 sensitive_text = [
@@ -437,6 +434,25 @@ def route_message(state: user_data, user_text: str):
         "- **Documents + bank call scripts**\n\n"
         "Reply with one: **apply**, **estimate**, or **documents**."
     )
+
+# progress
+def compute_progress(state):
+    steps = [
+        state.independent is not None,
+        state.household_size is not None,
+        state.income_range is not None,
+        state.asset_range is not None,
+    ]
+    return sum(1 for x in steps if x) / len(steps)
+
+def route_message_payload(state, user_text: str):
+    reply_text = route_message(state, user_text)
+    return {
+        "reply": reply_text,
+        "mode": state.mode,
+        "progress": compute_progress(state),
+        "state": asdict(state),
+    }
 
 if __name__ == "__main__":
     state = user_data()
