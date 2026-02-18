@@ -2,157 +2,274 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { CollectedFields } from "@/lib/session";
+
+// Bank-specific instructions
+function bankSteps(bankName: string | undefined, who: "student" | "parent"): string {
+  const name = (bankName || "").toLowerCase();
+  const prefix = who === "parent" ? "your parent's" : "your";
+
+  if (name.includes("chase"))
+    return `Log into ${prefix} Chase account at chase.com → go to Accounts → Statements → download the last 2 months as PDF`;
+  if (name.includes("wells fargo") || name.includes("wellsfargo"))
+    return `Log into ${prefix} Wells Fargo account at wellsfargo.com → go to Accounts → Statements & Documents → download the last 2 months as PDF`;
+  if (name.includes("bank of america") || name.includes("bofa"))
+    return `Log into ${prefix} Bank of America account at bankofamerica.com → go to Accounts → Statements → download the last 2 months as PDF`;
+  if (name.includes("citi"))
+    return `Log into ${prefix} Citi account at online.citi.com → go to Statements → download the last 2 months as PDF`;
+  if (name.includes("td bank") || name.includes("tdbank"))
+    return `Log into ${prefix} TD Bank account at tdbank.com → go to Accounts → View Statements → download the last 2 months as PDF`;
+  if (name.includes("us bank") || name.includes("usbank"))
+    return `Log into ${prefix} U.S. Bank account at usbank.com → go to Statements → download the last 2 months as PDF`;
+  if (name.includes("capital one"))
+    return `Log into ${prefix} Capital One account at capitalone.com → go to Account → Statements → download the last 2 months as PDF`;
+  if (name.includes("pnc"))
+    return `Log into ${prefix} PNC account at pnc.com → go to Accounts → Statements → download the last 2 months as PDF`;
+  if (bankName)
+    return `Log into ${prefix} ${bankName} online banking → find the Statements or Documents section → download the last 2 months as PDF`;
+  return `Log into ${prefix} bank's online portal → find Statements or Documents → download the last 2 months as PDF`;
+}
+
+interface CheckItem {
+  label: string;
+  steps: string;
+  done: boolean;
+}
+
+function buildChecklist(fields: CollectedFields): CheckItem[] {
+  const items: CheckItem[] = [];
+
+  // Bank statement — student
+  if (fields.bank_name || fields.has_checking || fields.has_savings) {
+    items.push({
+      label: `Your bank statement${fields.bank_name ? ` (${fields.bank_name})` : ""}`,
+      steps: bankSteps(fields.bank_name, "student"),
+      done: false,
+    });
+  }
+
+  // Bank statement — parent (if dependent)
+  if (fields.independent === false && fields.parent_bank_name) {
+    items.push({
+      label: `Parent's bank statement (${fields.parent_bank_name})`,
+      steps: bankSteps(fields.parent_bank_name, "parent"),
+      done: false,
+    });
+  }
+
+  // W-2
+  if (fields.has_w2) {
+    items.push({
+      label: "Your W-2 from last year",
+      steps:
+        "Contact your employer's HR or payroll department and ask for your 2024 W-2. Many companies also post it in an employee portal like ADP or Workday.",
+      done: false,
+    });
+  }
+
+  // Tax return
+  if (fields.filed_taxes || fields.has_tax_return) {
+    items.push({
+      label: "Your federal tax return (or transcript)",
+      steps:
+        "Go to IRS.gov → click 'Get Your Tax Record' → sign in or create an account → download your 2024 Tax Return Transcript as a PDF.",
+      done: false,
+    });
+  }
+
+  // Parent tax return if dependent
+  if (fields.independent === false && fields.filed_taxes) {
+    items.push({
+      label: "Parent's federal tax return",
+      steps:
+        "Ask a parent to log into IRS.gov → Get Your Tax Record → download their 2024 Tax Return Transcript. If they used a tax preparer, they can request a copy directly.",
+      done: false,
+    });
+  }
+
+  // Schools
+  if (fields.schools && fields.schools.length > 0) {
+    items.push({
+      label: `School list: ${fields.schools.join(", ")}`,
+      steps:
+        "When you fill out FAFSA, search for each school by name and add them. Look up each school's priority financial aid deadline on their admissions website — earlier = more money.",
+      done: false,
+    });
+  }
+
+  // Identity / basics — always needed
+  items.push({
+    label: "Your personal info",
+    steps:
+      "Have your legal name, date of birth, address, and Social Security Number ready. You'll enter these directly on StudentAid.gov — don't write them down anywhere else.",
+    done: false,
+  });
+
+  return items;
+}
 
 export default function ChecklistPage() {
+  const [fields, setFields] = useState<CollectedFields>({});
   const [progress, setProgress] = useState(0);
+  const [checked, setChecked] = useState<boolean[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     fetch("/api/state")
       .then((r) => r.json())
-      .then((d) => setProgress(d.progress ?? 0))
-      .catch(() => {});
+      .then((d) => {
+        setFields(d.fields ?? {});
+        setProgress(d.progress ?? 0);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
+  const items = buildChecklist(fields);
+
+  useEffect(() => {
+    setChecked(items.map(() => false));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
+  function toggle(i: number) {
+    setChecked((prev) => prev.map((v, idx) => (idx === i ? !v : v)));
+  }
+
   const pct = Math.round(progress * 100);
+  const doneCount = checked.filter(Boolean).length;
 
   return (
-    <div className="app-shell">
-      <aside className="sidebar">
-        <div className="sidebar-top">
-          <div className="brand">Checklist</div>
-          <div className="subtle">What you&apos;ll likely need for FAFSA + verification</div>
+    <div style={{ minHeight: "100vh", background: "var(--bg)" }}>
+      {/* Top bar */}
+      <header
+        className="topbar"
+        style={{
+          borderRadius: 0,
+          margin: 0,
+          border: "none",
+          borderBottom: "1px solid var(--border)",
+          padding: "14px 24px",
+        }}
+      >
+        <div className="title-wrap">
+          <div className="title">FAFSA Buddy</div>
+          <div className="pill">
+            <span>🔒</span>
+            <span>Private session</span>
+          </div>
+        </div>
+        <div className="progress-wrap">
+          <div className="progress-label">
+            <span>Profile complete</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${pct}%` }} />
+          </div>
+        </div>
+      </header>
+
+      <div style={{ maxWidth: 720, margin: "0 auto", padding: "32px 16px" }}>
+        <div style={{ marginBottom: 24 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px" }}>
+            Your personalized checklist
+          </h1>
+          <p style={{ color: "var(--muted)", fontSize: 14, margin: 0 }}>
+            Based on your answers — here&apos;s exactly what to grab and how to get it.
+          </p>
         </div>
 
-        <nav className="stepper">
-          <Link href="/" className="step">
-            <span className="step-num">←</span>
-            <span className="step-label">Back to chat</span>
-          </Link>
-          <div className="divider" />
-          <div className="subtle" style={{ marginTop: 6 }}>
-            Sections
+        {loading ? (
+          <div style={{ color: "var(--muted)", fontSize: 14 }}>Loading your checklist...</div>
+        ) : items.length === 0 ? (
+          <div className="card" style={{ textAlign: "center", padding: 32 }}>
+            <p style={{ color: "var(--muted)" }}>
+              Looks like we didn&apos;t collect enough info yet.
+            </p>
+            <Link
+              href="/"
+              style={{
+                display: "inline-block",
+                marginTop: 12,
+                color: "var(--teal)",
+                textDecoration: "none",
+                fontWeight: 700,
+              }}
+            >
+              ← Go back to chat
+            </Link>
           </div>
-          <a className="tiny-link" href="#tax">
-            Taxes
-          </a>
-          <a className="tiny-link" href="#bank">
-            Assets &amp; banking
-          </a>
-          <a className="tiny-link" href="#identity">
-            Identity
-          </a>
-          <a className="tiny-link" href="#schools">
-            Schools
-          </a>
-        </nav>
-
-        <div className="sidebar-footer">
-          <Link className="tiny-link" href="/dashboard">
-            Developer dashboard
-          </Link>
-        </div>
-      </aside>
-
-      <main className="main">
-        <header className="topbar">
-          <div className="title-wrap">
-            <div className="title">FAFSA Buddy</div>
-            <div className="pill">
-              <span>🔒</span>
-              <span>Private session</span>
+        ) : (
+          <>
+            <div
+              style={{
+                fontSize: 13,
+                color: "var(--muted)",
+                marginBottom: 16,
+              }}
+            >
+              {doneCount} of {items.length} gathered
             </div>
-          </div>
-          <div className="progress-wrap">
-            <div className="progress-label">
-              <span>Progress</span>
-              <span>{pct ? `${pct}%` : "—"}</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        </header>
 
-        <section className="page">
-          <div className="page-grid">
-            <div className="card">
-              <div className="card-title">Your personalized checklist</div>
-              <div className="card-subtitle">
-                This is a general checklist. Your school may ask for additional verification later.
-              </div>
-
-              <div className="section" id="tax">
-                <div className="section-title">Taxes &amp; income</div>
-                <CheckItem label="Federal tax return info (student and/or parent, depending on dependency)" />
-                <CheckItem label="W-2s / income statements (if applicable)" />
-                <CheckItem label="Records of untaxed income (if applicable)" />
-              </div>
-
-              <div className="section" id="bank">
-                <div className="section-title">Assets &amp; banking</div>
-                <CheckItem label="Current checking/savings balances (use ranges if needed)" />
-                <CheckItem label="Bank statements (PDFs) for verification (if requested)" />
-
-                <div className="callout">
-                  <div className="callout-title">Bank statement call script</div>
-                  <div className="callout-body">
-                    &ldquo;Hi — I need my most recent checking and savings statements for a financial
-                    aid application. Can you tell me how to download PDF statements from online
-                    banking? If I can&apos;t access online banking, can you mail them or make printed
-                    copies available at a branch?&rdquo;
-                    <div className="callout-small">
-                      Don&apos;t share full account numbers, PINs, or passwords.
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {items.map((item, i) => (
+                <div
+                  key={i}
+                  className="card"
+                  style={{
+                    opacity: checked[i] ? 0.55 : 1,
+                    transition: "opacity 0.2s",
+                  }}
+                >
+                  <label
+                    style={{
+                      display: "flex",
+                      gap: 14,
+                      alignItems: "flex-start",
+                      cursor: "pointer",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked[i] ?? false}
+                      onChange={() => toggle(i)}
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                    <div>
+                      <div
+                        style={{
+                          fontWeight: 700,
+                          fontSize: 15,
+                          marginBottom: 6,
+                          textDecoration: checked[i] ? "line-through" : "none",
+                        }}
+                      >
+                        {item.label}
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 13,
+                          color: "var(--muted)",
+                          lineHeight: 1.5,
+                        }}
+                      >
+                        {item.steps}
+                      </div>
                     </div>
-                  </div>
+                  </label>
                 </div>
-              </div>
-
-              <div className="section" id="identity">
-                <div className="section-title">Identity &amp; basics</div>
-                <CheckItem label="Legal name, date of birth, contact info" />
-                <CheckItem label="Driver's license/state ID (if you have one)" />
-              </div>
-
-              <div className="section" id="schools">
-                <div className="section-title">Schools &amp; timing</div>
-                <CheckItem label="List of schools to receive your FAFSA" />
-                <CheckItem label="Application deadlines / priority aid deadlines" />
-              </div>
+              ))}
             </div>
 
-            <div className="card">
-              <div className="card-title">Upload area (optional)</div>
-              <div className="card-subtitle">
-                For the hackathon MVP, this is UI-only (no backend upload). You can connect it later.
-              </div>
-
-              <div className="upload">
-                <div className="upload-box">
-                  <div className="upload-title">Drop files here</div>
-                  <div className="upload-subtle">PDF statements, tax docs, etc.</div>
-                  <button className="btn" type="button">
-                    Choose file
-                  </button>
-                </div>
-                <div className="subtle" style={{ marginTop: 12 }}>
-                  Tip: For privacy, store nothing server-side unless you really need it. If you do,
-                  encrypt at rest and use short retention windows.
-                </div>
-              </div>
+            <div style={{ marginTop: 24, display: "flex", gap: 12 }}>
+              <Link href="/" className="btn">
+                ← Back to chat
+              </Link>
             </div>
-          </div>
-        </section>
-      </main>
+          </>
+        )}
+      </div>
     </div>
-  );
-}
-
-function CheckItem({ label }: { label: string }) {
-  const [checked, setChecked] = useState(false);
-  return (
-    <label className="check">
-      <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} />
-      <span>{label}</span>
-    </label>
   );
 }

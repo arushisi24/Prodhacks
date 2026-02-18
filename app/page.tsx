@@ -1,21 +1,12 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 interface Message {
   who: "user" | "assistant";
   text: string;
 }
-
-const STEPS = [
-  { num: 1, label: "Goal & basics" },
-  { num: 2, label: "Household / dependency" },
-  { num: 3, label: "Taxes & income" },
-  { num: 4, label: "Assets & banking" },
-  { num: 5, label: "Schools & timing" },
-  { num: 6, label: "Checklist" },
-];
 
 async function postJSON(url: string, body: object) {
   const res = await fetch(url, {
@@ -29,12 +20,13 @@ async function postJSON(url: string, body: object) {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [progress, setProgress] = useState(0);
-  const [activeChapter, setActiveChapter] = useState(1);
-  const [showQuickReplies, setShowQuickReplies] = useState(false);
+  const [loading, setLoading] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   function scrollToBottom() {
     if (chatRef.current) {
@@ -52,16 +44,13 @@ export default function ChatPage() {
       const data = await postJSON("/api/chat", { message: "" });
       addMessage("assistant", data.reply);
       setProgress(data.progress ?? 0);
-      if (typeof data.chapter === "number") setActiveChapter(data.chapter);
-      setShowQuickReplies(true);
     } catch {
       addMessage(
         "assistant",
-        "Hi! I'm FAFSA Buddy 👋\n\nWhat do you want help with today? Use the buttons below."
+        "Hey! I'm here to help you get your financial aid stuff sorted. What school are you looking at?"
       );
-      setShowQuickReplies(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -70,27 +59,29 @@ export default function ChatPage() {
 
   async function sendMessage(text: string) {
     const msg = text.trim();
-    if (!msg) return;
+    if (!msg || loading) return;
 
     addMessage("user", msg);
     setInput("");
-    setShowQuickReplies(false);
+    setLoading(true);
 
     try {
       const data = await postJSON("/api/chat", { message: msg });
       addMessage("assistant", data.reply);
       setProgress(data.progress ?? 0);
-      if (typeof data.chapter === "number") setActiveChapter(data.chapter);
 
-      const replyLower = (data.reply || "").toLowerCase();
-      const shouldShow =
-        replyLower.includes("what do you want help with") ||
-        replyLower.includes("tap one of the buttons") ||
-        replyLower.includes("choose one") ||
-        replyLower.includes("i don't know");
-      setShowQuickReplies(shouldShow);
+      if (data.done) {
+        // Let them see the final message then redirect to checklist
+        setTimeout(() => router.push("/checklist"), 2200);
+      }
     } catch (err) {
-      addMessage("assistant", "Something went wrong. Please try again.");
+      addMessage(
+        "assistant",
+        err instanceof Error ? err.message : "Something went wrong. Try again."
+      );
+    } finally {
+      setLoading(false);
+      inputRef.current?.focus();
     }
   }
 
@@ -102,124 +93,125 @@ export default function ChatPage() {
     }
     setMessages([]);
     setProgress(0);
-    setActiveChapter(1);
-    setShowQuickReplies(false);
     await bootWelcome();
   }
 
   const pct = Math.round(progress * 100);
 
   return (
-    <div className="app-shell">
-      {/* Sidebar */}
-      <aside className="sidebar">
-        <div className="sidebar-top">
-          <div className="brand">Getting to know you</div>
-          <div className="subtle">
-            Answer a few questions so we can personalize your checklist
+    <div
+      style={{
+        height: "100vh",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+        background: "var(--bg)",
+      }}
+    >
+      {/* Top bar — fixed, never scrolls */}
+      <header
+        className="topbar"
+        style={{
+          flexShrink: 0,
+          borderRadius: 0,
+          margin: 0,
+          border: "none",
+          borderBottom: "1px solid var(--border)",
+          padding: "14px 24px",
+        }}
+      >
+        <div className="title-wrap">
+          <div className="title">FAFSA Buddy</div>
+          <div className="pill">
+            <span>🔒</span>
+            <span>Private session</span>
           </div>
         </div>
-
-        <nav className="stepper" aria-label="FAFSA steps">
-          {STEPS.map((s) =>
-            s.num === 6 ? (
-              <Link key={s.num} href="/checklist" className="step">
-                <span className="step-num">{s.num}</span>
-                <span className="step-label">{s.label}</span>
-              </Link>
-            ) : (
-              <button
-                key={s.num}
-                id={`chapter-${s.num}`}
-                className={`step${activeChapter === s.num ? " active" : ""}`}
-              >
-                <span className="step-num">{s.num}</span>
-                <span className="step-label">{s.label}</span>
-              </button>
-            )
-          )}
-        </nav>
-
-        <div className="sidebar-footer">
-          <Link className="tiny-link" href="/dashboard">
-            Developer dashboard
-          </Link>
+        <div className="progress-wrap">
+          <div className="progress-label">
+            <span>Getting your info</span>
+            <span>{pct}%</span>
+          </div>
+          <div className="progress-bar">
+            <div className="progress-fill" style={{ width: `${pct}%` }} />
+          </div>
         </div>
-      </aside>
+      </header>
 
-      {/* Main */}
-      <main className="main">
-        <header className="topbar">
-          <div className="title-wrap">
-            <div className="title">FAFSA Buddy</div>
-            <div className="pill">
-              <span>🔒</span>
-              <span>Private session</span>
+      {/* Chat area — fills remaining height, only this scrolls */}
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+          display: "flex",
+          flexDirection: "column",
+          maxWidth: 760,
+          width: "100%",
+          margin: "0 auto",
+          padding: "20px 16px 0",
+          boxSizing: "border-box",
+          overflow: "hidden",
+        }}
+      >
+        <div
+          ref={chatRef}
+          className="chat"
+          style={{
+            flex: 1,
+            minHeight: 0,
+            overflowY: "auto",
+            display: "flex",
+            flexDirection: "column",
+            gap: 10,
+            paddingBottom: 16,
+          }}
+        >
+          {messages.map((m, i) => (
+            <div key={i} className={`bubble ${m.who}`}>
+              {m.text}
             </div>
-          </div>
-          <div className="progress-wrap">
-            <div className="progress-label">
-              <span>Progress</span>
-              <span>{pct}%</span>
-            </div>
-            <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${pct}%` }} />
-            </div>
-          </div>
-        </header>
-
-        <section className="chat-area">
-          <div ref={chatRef} className="chat">
-            {messages.map((m, i) => (
-              <div key={i} className={`bubble ${m.who}`}>
-                {m.text}
-              </div>
-            ))}
-          </div>
-
-          {showQuickReplies && (
-            <div className="quick-replies">
-              {[
-                { label: "Need help paying for college", ghost: false },
-                { label: "Not sure what I qualify for", ghost: false },
-                { label: "School told me to apply", ghost: false },
-                { label: "I don't know", ghost: true },
-              ].map(({ label, ghost }) => (
-                <button
-                  key={label}
-                  className={`chip${ghost ? " ghost" : ""}`}
-                  onClick={() => sendMessage(label)}
-                >
-                  {label}
-                </button>
-              ))}
+          ))}
+          {loading && (
+            <div
+              className="bubble assistant"
+              style={{ color: "var(--muted)", fontStyle: "italic" }}
+            >
+              Typing...
             </div>
           )}
+        </div>
 
-          <div className="composer">
-            <input
-              className="input"
-              placeholder="Type your answer..."
-              autoComplete="off"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") sendMessage(input);
-              }}
-            />
-            <button className="send" aria-label="Send" onClick={() => sendMessage(input)}>
-              ➤
-            </button>
-            <button className="reset" type="button" onClick={resetChat}>
-              Reset
-            </button>
-          </div>
+        <div className="composer" style={{ padding: "10px 0 4px", flexShrink: 0 }}>
+          <input
+            ref={inputRef}
+            className="input"
+            placeholder="Type here..."
+            autoComplete="off"
+            autoFocus
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && !e.shiftKey) sendMessage(input);
+            }}
+          />
+          <button
+            className="send"
+            aria-label="Send"
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={() => sendMessage(input)}
+            disabled={loading}
+          >
+            ➤
+          </button>
+          <button className="reset" type="button" onClick={resetChat}>
+            Reset
+          </button>
+        </div>
 
-          <div className="fineprint">
-            Don&apos;t enter SSNs, account/routing numbers, passwords, or PINs.
-          </div>
-        </section>
-      </main>
+        <div className="fineprint" style={{ flexShrink: 0 }}>
+          Don&apos;t enter SSNs, account/routing numbers, passwords, or PINs.
+        </div>
+      </div>
     </div>
   );
 }
