@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import AppShell from "@/components/AppShell";
 
 interface Message {
   who: "user" | "assistant";
@@ -20,7 +20,6 @@ async function postJSON(url: string, body: object) {
 }
 
 export default function ChatPage() {
-  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [progress, setProgress] = useState(0);
@@ -69,11 +68,6 @@ export default function ChatPage() {
       const data = await postJSON("/api/chat", { message: msg });
       addMessage("assistant", data.reply);
       setProgress(data.progress ?? 0);
-
-      if (data.done) {
-        // Let them see the final message then redirect to checklist
-        setTimeout(() => router.push("/checklist"), 2200);
-      }
     } catch (err) {
       addMessage(
         "assistant",
@@ -99,16 +93,8 @@ export default function ChatPage() {
   const pct = Math.round(progress * 100);
 
   return (
-    <div
-      style={{
-        height: "100vh",
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
-        background: "var(--bg)",
-      }}
-    >
-      {/* Top bar — fixed, never scrolls */}
+    <AppShell>
+      {/* Top bar */}
       <header
         className="topbar"
         style={{
@@ -121,7 +107,7 @@ export default function ChatPage() {
         }}
       >
         <div className="title-wrap">
-          <div className="title">FAFSA Buddy</div>
+          <div className="title">Chat</div>
           <div className="pill">
             <span>🔒</span>
             <span>Private session</span>
@@ -138,7 +124,7 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* Chat area — fills remaining height, only this scrolls */}
+      {/* Chat */}
       <div
         style={{
           flex: 1,
@@ -172,10 +158,7 @@ export default function ChatPage() {
             </div>
           ))}
           {loading && (
-            <div
-              className="bubble assistant"
-              style={{ color: "var(--muted)", fontStyle: "italic" }}
-            >
+            <div className="bubble assistant" style={{ color: "var(--muted)", fontStyle: "italic" }}>
               Typing...
             </div>
           )}
@@ -212,6 +195,6 @@ export default function ChatPage() {
           Don&apos;t enter SSNs, account/routing numbers, passwords, or PINs.
         </div>
       </div>
-    </div>
+    </AppShell>
   );
 }
