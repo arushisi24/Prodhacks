@@ -1,0 +1,153 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>FAFSA Buddy • Checklist</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="brand">Checklist</div>
+          <div class="subtle">What you’ll likely need for FAFSA + verification</div>
+        </div>
+
+        <nav class="stepper">
+          <a class="step link" href="/static/index.html">
+            <span class="step-num">←</span>
+            <span class="step-label">Back to chat</span>
+          </a>
+          <div class="divider"></div>
+          <div class="subtle" style="margin-top: 6px">Sections</div>
+          <a class="tiny-link" href="#tax">Taxes</a>
+          <a class="tiny-link" href="#bank">Assets &amp; banking</a>
+          <a class="tiny-link" href="#identity">Identity</a>
+          <a class="tiny-link" href="#schools">Schools</a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <a class="tiny-link" href="/static/dashboard.html">Developer dashboard</a>
+        </div>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="title-wrap">
+            <div class="title">FAFSA Buddy</div>
+            <div class="pill"><span class="lock">🔒</span><span>Private session</span></div>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>Progress</span>
+              <span id="progressPct">—</span>
+            </div>
+            <div class="progress-bar">
+              <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </header>
+
+        <section class="page">
+          <div class="page-grid">
+            <div class="card">
+              <div class="card-title">Your personalized checklist</div>
+              <div class="card-subtitle">
+                This is a general checklist. Your school may ask for additional verification later.
+              </div>
+
+              <div class="section" id="tax">
+                <div class="section-title">Taxes &amp; income</div>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Federal tax return info (student and/or parent, depending on dependency)</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>W-2s / income statements (if applicable)</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Records of untaxed income (if applicable)</span>
+                </label>
+              </div>
+
+              <div class="section" id="bank">
+                <div class="section-title">Assets &amp; banking</div>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Current checking/savings balances (use ranges if needed)</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Bank statements (PDFs) for verification (if requested)</span>
+                </label>
+
+                <div class="callout">
+                  <div class="callout-title">Bank statement call script</div>
+                  <div class="callout-body">
+                    “Hi — I need my most recent checking and savings statements for a financial aid application.
+                    Can you tell me how to download PDF statements from online banking? If I can’t access online banking,
+                    can you mail them or make printed copies available at a branch?”
+                    <div class="callout-small">
+                      Don’t share full account numbers, PINs, or passwords.
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="section" id="identity">
+                <div class="section-title">Identity &amp; basics</div>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Legal name, date of birth, contact info</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Driver’s license/state ID (if you have one)</span>
+                </label>
+              </div>
+
+              <div class="section" id="schools">
+                <div class="section-title">Schools &amp; timing</div>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>List of schools to receive your FAFSA</span>
+                </label>
+                <label class="check">
+                  <input type="checkbox" />
+                  <span>Application deadlines / priority aid deadlines</span>
+                </label>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Upload area (optional)</div>
+              <div class="card-subtitle">
+                For the hackathon MVP, this is UI-only (no backend upload). You can connect it later.
+              </div>
+
+              <div class="upload">
+                <div class="upload-box">
+                  <div class="upload-title">Drop files here</div>
+                  <div class="upload-subtle">PDF statements, tax docs, etc.</div>
+                  <button class="btn" type="button">Choose file</button>
+                </div>
+
+                <div class="subtle" style="margin-top: 12px">
+                  Tip: For privacy, store nothing server-side unless you really need it.
+                  If you do, encrypt at rest and use short retention windows.
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
