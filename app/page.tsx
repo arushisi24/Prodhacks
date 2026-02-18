@@ -23,8 +23,9 @@ async function postJSON(url: string, body: object) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  return res.json();
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.reply || `HTTP ${res.status}`);
+  return data;
 }
 
 export default function ChatPage() {

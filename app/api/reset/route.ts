@@ -1,11 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { encodeState } from "@/lib/session";
-import { createUserData } from "@/lib/core";
+import { encodeSession } from "@/lib/session";
 
 export async function POST(req: NextRequest) {
-  const fresh = createUserData();
   const res = NextResponse.json({ ok: true });
-  res.cookies.set("session", encodeState(fresh), {
+  res.cookies.set("session", encodeSession([]), {
     httpOnly: true,
     sameSite: "lax",
     path: "/",
