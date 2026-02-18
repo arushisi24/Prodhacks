@@ -25,10 +25,22 @@ safety_text = (
     "passwords, or PINs. I can help using ranges and checklists."
 )
 
+def opening_message() -> str:
+    return (
+        "Hi! I’m FAFSA Buddy 👋\n\n"
+        "What do you want help with today?\n"
+        "• Need help paying for college\n"
+        "• Not sure what I qualify for\n"
+        "• School told me to apply\n"
+        "• I don’t know\n\n"
+        "Privacy note: don’t enter SSNs, bank account/routing numbers, passwords, or PINs."
+    )
+
 # store data
 @dataclass
 class user_data:
     mode: str = "initial" #initial->apply->estimate->documents
+    apply_step: int = 0
     under_24: Optional[bool] = None
     independent: Optional[bool] = None
     household_size: Optional[int] = None
@@ -59,6 +71,10 @@ asset_ranges = [
     ("50_100k", "$50,000–$100,000"),
     ("over_100k", "Over $100,000"),
 ]
+
+def format_band_menu(bands) -> str:
+    # bands is like income_ranges = [("under_20k", "Under $20,000"), ...]
+    return "\n".join([f"{k} — {label}" for k, label in bands])
 
 def label_for_key(bands, key):
     for k, label in bands:
@@ -277,18 +293,39 @@ def get_tuition(school):
         "tuition_out_of_state": out_state,
         "tuition_best_guess": tuition,
     }
- 
- # scripts
+
 def bank_statement_script():
     return (
-        "**Bank statement script (phone or chat):**\n"
-        "“Hi — I need my most recent checking and savings statements for a financial aid application. "
-        "Can you tell me how to download PDF statements from online banking? If I can’t access online banking, "
-        "can you mail them or make printed copies available at a branch?”\n\n"
-        "**Have ready:** name, address on file, phone/email on file, and any verification your bank uses.\n"
-        "**Don’t share:** full account numbers, PINs, or passwords."
+        "Bank statement script (phone or chat)\n"
+        "Hi — I’m gathering documents for a financial aid application.\n"
+        "Can you tell me how to download my most recent checking and savings statements as PDFs?\n"
+        "If I can’t access online banking, can you mail them or prepare printed copies for pickup?\n\n"
+        "Have ready: your name, address on file, and whatever verification the bank uses.\n"
+        "Do not share: full account numbers, PINs, or passwords."
     )
 
+def missing_docs_checklist():
+    return (
+        "Common FAFSA documents\n"
+        "- Student contact info\n"
+        "- Tax info (student and/or parent, depending on dependency)\n"
+        "- Current bank balances (student and/or parent)\n"
+        "- Records of untaxed income (if applicable)\n"
+        "- List of schools to send FAFSA to\n\n"
+        "Tell me what you’re missing: tax info or bank statements/balances."
+    )
+
+def fafsa_steps_overview():
+    return (
+        "FAFSA steps (high level)\n"
+        "1) Log in (or create your FAFSA account)\n"
+        "2) Start the FAFSA for the correct school year\n"
+        "3) Add your school list\n"
+        "4) Answer dependency and household questions\n"
+        "5) Enter income and asset info\n"
+        "6) Sign and submit\n"
+        "7) Watch for follow-ups (verification or school portal requests)\n"
+    )
 
 def missing_docs_checklist():
     return (
@@ -315,31 +352,53 @@ def fafsa_steps_overview():
         "If you tell me whether you’re **independent** or **dependent**, I’ll tailor the checklist."
     )
 
+def looks_like_award_year(s: str) -> bool:
+    # accepts: 2026-27, 2026–27, 2026—27
+    t = s.strip().replace("–", "-").replace("—", "-")
+    return len(t) == 7 and t[:4].isdigit() and t[4] == "-" and t[5:].isdigit()
+
+def normalize_award_year(s: str) -> str:
+    return s.strip().replace("–", "-").replace("—", "-")
+
 # conversation router
 def route_message(state: user_data, user_text: str):
     text = (user_text or "").strip()
     low = text.lower()
 
+    if text == "":
+        return opening_message()
+
     if contains_sensitive_text(text):
         return safety_text
+    
+    APPLY_BUTTON_TEXTS = {
+    "need help paying for college",
+    "not sure what i qualify for",
+    "school told me to apply",
+    "i don't know",
+    }
 
+    if low in APPLY_BUTTON_TEXTS:
+        state.mode = "apply"
+        state.apply_step = 1
+        return (
+            "Got it — we’ll do this together.\n\n"
+            "First question: what school year are you applying for?\n"
+            "Example: 2026-27"
+        )
     # mode switching keywords
     if any(k in low for k in ["estimate", "how much", "pell", "project", "range"]):
         state.mode = "estimate"
-        # reset estimate fields
         state.independent = None
         state.household_size = None
         state.income_range = None
         state.asset_range = None
 
         return (
-            "Got it — I’ll give a **range-based estimate**.\n\n"
-            "1) Are you **independent** for FAFSA purposes? (yes/no)\n"
-            "2) What’s your **household size**? (number)\n"
-            "3) Choose your **income range** (reply with the key):\n"
-            + "\n".join([f"- {k}: {label}" for k, label in income_ranges])
-            + "\n\n4) Choose your **assets range** (reply with the key):\n"
-            + "\n".join([f"- {k}: {label}" for k, label in asset_ranges])
+            "Awesome — let’s estimate your Pell Grant range.\n"
+            "Quick note: please don’t share SSNs, account numbers, passwords, or PINs.\n\n"
+            "Step 1 of 4: Are you independent for FAFSA purposes? (yes/no)\n"
+            "Not sure? Type: not sure"
         )
 
     if any(k in low for k in ["bank", "statement", "statements", "call", "documents", "docs"]):
@@ -351,75 +410,75 @@ def route_message(state: user_data, user_text: str):
         return fafsa_steps_overview()
 
     # handle estimate mode inputs
-    if state.mode == "estimate":
-        if state.independent is None:
+    if state.mode == "apply":
+        # Step 1: collect award year
+        if state.apply_step == 1:
+            if looks_like_award_year(text):
+                state.award_year = normalize_award_year(text)
+                state.apply_step = 2
+                # IMPORTANT: return ONLY the next question
+                return "Next: are you independent for FAFSA purposes? (yes/no)"
+            return "Please enter a school year like 2026-27."
+
+        # Step 2: independent?
+        if state.apply_step == 2:
             if "yes" in low:
                 state.independent = True
-                return "Thanks. What’s your **household size**? (number like 1, 2, 3...)"
+                state.apply_step = 3
+                return "Next: what’s your household size? (number)"
             if "no" in low:
                 state.independent = False
-                return "Thanks. What’s your **household size**? (number like 2, 3, 4...)"
-            return "Please reply **yes** or **no**: are you **independent** for FAFSA purposes?"
+                state.apply_step = 3
+                return "Next: what’s your household size? (number)"
+            return "Please reply yes or no: are you independent for FAFSA purposes?"
 
-        if state.household_size is None:
+        # Step 3: household size
+        if state.apply_step == 3:
             try:
-                digits = "".join(ch for ch in text if ch.isdigit())
-                hs = int(digits)
+                hs = int("".join(ch for ch in text if ch.isdigit()))
                 if hs <= 0 or hs > 20:
-                    return "Household size should be a reasonable number (like 1–10). What’s yours?"
+                    return "That number looks off — what’s your household size? (usually 1–10)"
                 state.household_size = hs
-                return (
-                    "Got it. Choose your **income range** by key:\n"
-                    + "\n".join([f"- {k}: {label}" for k, label in income_ranges])
-                )
+                state.apply_step = 4
+                return "Next: do you have your tax info available right now? (yes/no)"
             except Exception:
-                return "What’s your household size? (number only, like 3)"
+                return "Please enter a number for household size (like 3)."
 
-        if state.income_range is None:
-            keys = [k for k, _ in income_ranges]
-            chosen = next((k for k in keys if k in low), None)
-            if not chosen:
-                return (
-                    "Pick one income band key exactly:\n"
-                    + "\n".join([f"- {k}: {label}" for k, label in income_ranges])
-                )
-            state.income_range = chosen
-            return (
-                "Thanks. Now choose your **assets range** by key:\n"
-                + "\n".join([f"- {k}: {label}" for k, label in asset_ranges])
-            )
+        # Step 4: tax info
+        if state.apply_step == 4:
+            if "yes" in low:
+                state.has_tax_info = True
+                state.apply_step = 5
+                return "Thanks. Next: do you have your current bank balances available? (yes/no)"
+            if "no" in low:
+                state.has_tax_info = False
+                state.apply_step = 5
+                return "No problem. Next: do you have your current bank balances available? (yes/no)"
+            return "Please reply yes or no: do you have your tax info available?"
 
-        if state.asset_range is None:
-            keys = [k for k, _ in asset_ranges]
-            chosen = next((k for k in keys if k in low), None)
-            if not chosen:
-                return (
-                    "Pick one assets band key exactly:\n"
-                    + "\n".join([f"- {k}: {label}" for k, label in asset_ranges])
-                )
-            state.asset_range = chosen
+        # Step 5: bank info
+        if state.apply_step == 5:
+            if "yes" in low:
+                state.has_bank_info = True
+                state.apply_step = 6
+                return "Great. Want a personalized checklist now? (yes/no)"
+            if "no" in low:
+                state.has_bank_info = False
+                state.apply_step = 6
+                return "Got it. Want a checklist and a script to request bank statements? (yes/no)"
+            return "Please reply yes or no: do you have your bank balances available?"
 
-            est = estimate_from_state(state)
+        # Step 6+: done / next actions
+        return "If you want, type documents for a checklist + bank statement script, or estimate for a Pell range estimate."
 
-            return (
-                "**Your range-based estimate (not official):**\n"
-                f"- Pell likelihood: **{est['pell_likelihood']}**\n"
-                f"- Pell range: **{format_pell_range(est)}**\n\n"
-                f"Inputs used: household={state.household_size}, "
-                f"income={band_label(income_ranges, state.income_range)}, "
-                f"assets={band_label(asset_ranges, state.asset_range)}, "
-                f"{'independent' if state.independent else 'dependent'}.\n\n"
-                "If you want, tell me: **are you missing tax info or bank statements?** "
-                "I can give next steps and scripts."
-            )
-
-        return "Want to re-estimate? Say **estimate** again, or ask about **documents** / **apply**."
 
     # apply mode
     if state.mode == "apply":
         return (
             fafsa_steps_overview()
-            + "\n\nTo tailor this: are you **independent** (yes/no) and do you have **tax info** available (yes/no)?"
+            + "\n\nQuick questions so I can tailor this:\n"
+            "1) Are you independent for FAFSA purposes? (yes/no)\n"
+            "2) Do you have your tax info available? (yes/no)"
         )
 
     # documents mode
@@ -427,15 +486,47 @@ def route_message(state: user_data, user_text: str):
         return missing_docs_checklist() + "\n\n" + bank_statement_script()
 
     # default
-    return (
-        "I can help with:\n"
-        "- **Apply to FAFSA** (step-by-step)\n"
-        "- **Estimate aid (ranges)**\n"
-        "- **Documents + bank call scripts**\n\n"
-        "Reply with one: **apply**, **estimate**, or **documents**."
-    )
+    return opening_message()
 
 # progress
+def current_chapter(state: user_data) -> int:
+    # 1=Goal & basics
+    # 2=Household / dependency
+    # 3=Taxes & income
+    # 4=Assets & banking
+    # 5=Schools & timing
+    # 6=Checklist
+
+    if state.mode == "apply":
+        # apply_step meaning:
+        # 1 = asking award year
+        # 2 = asking independent?
+        # 3 = asking household size
+        # 4 = asking tax info
+        # 5 = asking bank balances
+        # 6 = wrap / checklist prompt
+
+        if state.apply_step <= 1:
+            return 1
+        if state.apply_step in (2, 3):
+            return 2
+        if state.apply_step == 4:
+            return 3
+        if state.apply_step == 5:
+            return 4
+        if state.apply_step >= 6:
+            return 6
+
+    if state.mode == "estimate":
+        # Optional: if you want estimate to move chapters too,
+        # you should add estimate_step to state and map it.
+        return 4
+
+    if state.mode == "documents":
+        return 6
+
+    return 1
+
 def compute_progress(state):
     steps = [
         state.independent is not None,
@@ -451,6 +542,7 @@ def route_message_payload(state, user_text: str):
         "reply": reply_text,
         "mode": state.mode,
         "progress": compute_progress(state),
+        "chapter": current_chapter(state),
         "state": asdict(state),
     }
 

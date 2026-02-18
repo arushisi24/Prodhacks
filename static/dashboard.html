@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>FAFSA Buddy • Dashboard</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="brand">Dashboard</div>
+          <div class="subtle">Debug session state</div>
+        </div>
+
+        <nav class="stepper">
+          <a class="step link" href="/static/index.html">
+            <span class="step-num">←</span>
+            <span class="step-label">Back to chat</span>
+          </a>
+          <a class="step link" href="/static/checklist.html">
+            <span class="step-num">✓</span>
+            <span class="step-label">Checklist</span>
+          </a>
+        </nav>
+      </aside>
+
+      <main class="main">
+        <header class="topbar">
+          <div class="title-wrap">
+            <div class="title">FAFSA Buddy</div>
+            <div class="pill"><span class="lock">🔒</span><span>Private session</span></div>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>Progress</span>
+              <span id="progressPct">—</span>
+            </div>
+            <div class="progress-bar">
+              <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </header>
+
+        <section class="page">
+          <div class="page-grid">
+            <div class="card">
+              <div class="card-title">Current session</div>
+              <div class="card-subtitle">
+                Pulled from <code>/api/state</code>. This is what your FastAPI cookie session is storing.
+              </div>
+
+              <pre id="stateJson" class="codebox">{}</pre>
+
+              <div class="row">
+                <button id="refreshBtn" class="btn" type="button">Refresh</button>
+                <button id="resetBtn" class="btn danger" type="button">Reset session</button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-title">Notes</div>
+              <div class="card-subtitle">
+                If you want this to feel like the Figma stepper, map:
+              </div>
+              <ul class="ul">
+                <li><b>apply</b> mode → “Goal &amp; basics” + “Household/dependency”</li>
+                <li><b>estimate</b> mode → “Taxes &amp; income” + “Assets &amp; banking”</li>
+                <li><b>documents</b> mode → “Checklist”</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
