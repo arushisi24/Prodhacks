@@ -65,7 +65,12 @@ function setCookie(res: NextResponse, data: SessionData) {
 
 export async function POST(req: NextRequest) {
   const session = decodeSession(req.cookies.get("session")?.value);
-  const { message } = await req.json();
+  let message: string;
+  try {
+    ({ message } = await req.json());
+  } catch {
+    return NextResponse.json({ reply: "Bad request", progress: 0, done: false }, { status: 400 });
+  }
 
   // Boot welcome
   if (!message.trim()) {

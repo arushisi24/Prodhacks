@@ -14,8 +14,13 @@ async function postJSON(url: string, body: object) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.reply || `HTTP ${res.status}`);
+  let data: Record<string, unknown> = {};
+  try {
+    data = await res.json();
+  } catch {
+    throw new Error(`Server error (${res.status}) — check Vercel logs`);
+  }
+  if (!res.ok) throw new Error((data.reply as string) || `HTTP ${res.status}`);
   return data;
 }
 
@@ -41,8 +46,8 @@ export default function ChatPage() {
   const bootWelcome = useCallback(async () => {
     try {
       const data = await postJSON("/api/chat", { message: "" });
-      addMessage("assistant", data.reply);
-      setProgress(data.progress ?? 0);
+      addMessage("assistant", data.reply as string);
+      setProgress((data.progress as number) ?? 0);
     } catch {
       addMessage(
         "assistant",
@@ -66,8 +71,8 @@ export default function ChatPage() {
 
     try {
       const data = await postJSON("/api/chat", { message: msg });
-      addMessage("assistant", data.reply);
-      setProgress(data.progress ?? 0);
+      addMessage("assistant", data.reply as string);
+      setProgress((data.progress as number) ?? 0);
     } catch (err) {
       addMessage(
         "assistant",
