@@ -304,7 +304,7 @@ export default function PreparationsPage() {
         }}
       >
         <div className="title-wrap">
-          <div className="title">Preparations</div>
+          <div className="title">Checklist</div>
           {isPersonalized && (
             <div className="pill" style={{ background: "#eefbfb", borderColor: "#cdecee", color: "#0b4f50" }}>
               ✓ Personalized for you

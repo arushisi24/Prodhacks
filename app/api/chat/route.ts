@@ -52,7 +52,7 @@ You MUST respond with valid JSON only. No text outside the JSON object. Format:
 The "updates" object should only include fields you confirmed in THIS message (not previously collected ones).
 Set "done": true only when you have confirmed ALL 14 fields.`;
 
-const WELCOME = "Hey! I'm here to help you get your financial aid stuff sorted. What school are you trying to go to, and are you looking at applying for this upcoming school year?";
+const WELCOME = "Hi, I'm FAFSA Buddy 👋 I'm here to make FAFSA feel a lot less stressful.\n\nI can help you apply step-by-step, figure out what you qualify for, and make a checklist of what you need. First, what school year are you applying for?";
 
 function setCookie(res: NextResponse, data: SessionData) {
   res.cookies.set("session", encodeSession(data), {

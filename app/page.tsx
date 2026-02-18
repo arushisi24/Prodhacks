@@ -46,7 +46,8 @@ export default function ChatPage() {
   const bootWelcome = useCallback(async () => {
     try {
       const data = await postJSON("/api/chat", { message: "" });
-      addMessage("assistant", data.reply as string);
+      const parts = (data.reply as string).split("\n\n");
+      for (const part of parts) if (part.trim()) addMessage("assistant", part.trim());
       setProgress((data.progress as number) ?? 0);
     } catch {
       addMessage(
