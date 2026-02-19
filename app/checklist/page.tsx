@@ -277,14 +277,52 @@ export default function ChecklistPage() {
                         <div style={{ marginTop: 10 }}>
                           {item.uploadable ? (
                             uploads[item.key]?.url ? (
-                              <a
-                                href={uploads[item.key].url}
-                                target="_blank"
-                                rel="noreferrer"
-                                style={{ fontWeight: 700, color: "var(--teal)", textDecoration: "none" }}
-                              >
-                                View uploaded file →
-                              </a>
+                              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                                <a
+                                  href={uploads[item.key].url}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  style={{ fontWeight: 700, color: "var(--teal)", textDecoration: "none" }}
+                                  onClick={(e) => e.stopPropagation()} // don't toggle checkbox
+                                >
+                                  View uploaded file →
+                                </a>
+
+                                <button
+                                  type="button"
+                                  onClick={async (e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation(); // don't toggle checkbox
+
+                                    if (!confirm("Remove this uploaded file?")) return;
+
+                                    const res = await fetch(`/api/uploads?docType=${encodeURIComponent(item.key)}`, {
+                                      method: "DELETE",
+                                    });
+
+                                    const json = await res.json().catch(() => ({}));
+                                    if (!res.ok) {
+                                      alert(json.error || "Delete failed");
+                                      return;
+                                    }
+
+                                    // Refresh state so the Upload button re-appears
+                                    const d = await fetch("/api/state").then((r) => r.json());
+                                    setFields(d.fields ?? {});
+                                    setProgress(d.progress ?? 0);
+                                  }}
+                                  style={{
+                                    border: "1px solid var(--border)",
+                                    background: "transparent",
+                                    borderRadius: 10,
+                                    padding: "6px 10px",
+                                    fontWeight: 700,
+                                    cursor: "pointer",
+                                  }}
+                                >
+                                  Remove
+                                </button>
+                              </div>
                             ) : (
                               <UploadDocButton
                                 docType={item.key}

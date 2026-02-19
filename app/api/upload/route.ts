@@ -1,4 +1,4 @@
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function POST(req: NextRequest) {
@@ -18,4 +18,21 @@ export async function POST(req: NextRequest) {
 
   const blob = await put(`fafsa/${docType}-${Date.now()}-${file.name}`, file, { access: "public" });
   return NextResponse.json({ url: blob.url });
+}
+
+// DELETE /api/upload?url=<blobUrl>
+// (deletes the blob object)
+export async function DELETE(req: NextRequest) {
+  const url = req.nextUrl.searchParams.get("url");
+  if (!url) return NextResponse.json({ error: "Missing url" }, { status: 400 });
+
+  if (!url.includes("vercel-storage.com")) {
+    return NextResponse.json({ error: "Refusing to delete non-blob URL" }, { status: 400 });
+  }
+
+  // If del(url) works for you, keep it.
+  // If it fails on Vercel, use explicit token:
+  await del(url, { token: process.env.BLOB_READ_WRITE_TOKEN });
+
+  return NextResponse.json({ ok: true });
 }
