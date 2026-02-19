@@ -18,6 +18,7 @@ export interface CollectedFields {
   schools?: string[];
   enrollment?: string;
   parent_bank_name?: string;
+  uploads?: Record<string, { url: string; uploadedAt: string }>;
 }
 
 export interface SessionData {

@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { CollectedFields } from "@/lib/session";
+import UploadDocButton from "@/components/UploadDocButton";
 
 // Bank-specific instructions
 function bankSteps(bankName: string | undefined, who: "student" | "parent"): string {
@@ -31,9 +32,11 @@ function bankSteps(bankName: string | undefined, who: "student" | "parent"): str
 }
 
 interface CheckItem {
+  key: string;
   label: string;
   steps: string;
   done: boolean;
+  uploadable?: boolean;
 }
 
 function buildChecklist(fields: CollectedFields): CheckItem[] {
@@ -42,67 +45,81 @@ function buildChecklist(fields: CollectedFields): CheckItem[] {
   // Bank statement — student
   if (fields.bank_name || fields.has_checking || fields.has_savings) {
     items.push({
+      key: "bank_student",
       label: `Your bank statement${fields.bank_name ? ` (${fields.bank_name})` : ""}`,
       steps: bankSteps(fields.bank_name, "student"),
       done: false,
+      uploadable: true,
     });
   }
 
   // Bank statement — parent (if dependent)
   if (fields.independent === false && fields.parent_bank_name) {
     items.push({
+      key: "bank_parent",
       label: `Parent's bank statement (${fields.parent_bank_name})`,
       steps: bankSteps(fields.parent_bank_name, "parent"),
       done: false,
+      uploadable: true,
     });
   }
 
   // W-2
   if (fields.has_w2) {
     items.push({
+      key: "w2",
       label: "Your W-2 from last year",
       steps:
         "Contact your employer's HR or payroll department and ask for your 2024 W-2. Many companies also post it in an employee portal like ADP or Workday.",
       done: false,
+      uploadable: true,
     });
   }
 
   // Tax return
   if (fields.filed_taxes || fields.has_tax_return) {
     items.push({
+      key: "tax_return",
       label: "Your federal tax return (or transcript)",
       steps:
         "Go to IRS.gov → click 'Get Your Tax Record' → sign in or create an account → download your 2024 Tax Return Transcript as a PDF.",
       done: false,
+      uploadable: true,
     });
   }
 
   // Parent tax return if dependent
   if (fields.independent === false && fields.filed_taxes) {
     items.push({
+      key: "tax_parent",
       label: "Parent's federal tax return",
       steps:
         "Ask a parent to log into IRS.gov → Get Your Tax Record → download their 2024 Tax Return Transcript. If they used a tax preparer, they can request a copy directly.",
       done: false,
+      uploadable: true,
     });
   }
 
   // Schools
   if (fields.schools && fields.schools.length > 0) {
     items.push({
+      key: "schools",
       label: `School list: ${fields.schools.join(", ")}`,
       steps:
         "When you fill out FAFSA, search for each school by name and add them. Look up each school's priority financial aid deadline on their admissions website — earlier = more money.",
       done: false,
+      uploadable: false,
     });
   }
 
   // Identity / basics — always needed
   items.push({
+    key: "personal_info",
     label: "Your personal info",
     steps:
       "Have your legal name, date of birth, address, and Social Security Number ready. You'll enter these directly on StudentAid.gov — don't write them down anywhere else.",
     done: false,
+    uploadable: false,
   });
 
   return items;
@@ -126,6 +143,7 @@ export default function ChecklistPage() {
   }, []);
 
   const items = buildChecklist(fields);
+  const uploads = (fields as any).uploads ?? {};
 
   useEffect(() => {
     setChecked(items.map(() => false));
@@ -255,6 +273,30 @@ export default function ChecklistPage() {
                         }}
                       >
                         {item.steps}
+                        
+                        <div style={{ marginTop: 10 }}>
+                          {item.uploadable ? (
+                            uploads[item.key]?.url ? (
+                              <a
+                                href={uploads[item.key].url}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{ fontWeight: 700, color: "var(--teal)", textDecoration: "none" }}
+                              >
+                                View uploaded file →
+                              </a>
+                            ) : (
+                              <UploadDocButton
+                                docType={item.key}
+                                onSaved={async () => {
+                                  const d = await fetch("/api/state").then((r) => r.json());
+                                  setFields(d.fields ?? {});
+                                  setProgress(d.progress ?? 0);
+                                }}
+                              />
+                            )
+                          ) : null}
+                        </div>
                       </div>
                     </div>
                   </label>
