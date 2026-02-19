@@ -316,6 +316,7 @@ export default function PreparationsPage() {
     delete next[docId];
     setUploaded(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    console.log("Deleting url:", info.url);
   }
 
   function handleUpload(docId: string, info: UploadInfo) {
