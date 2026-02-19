@@ -30,9 +30,11 @@ export async function DELETE(req: NextRequest) {
     return NextResponse.json({ error: "Refusing to delete non-blob URL" }, { status: 400 });
   }
 
-  // If del(url) works for you, keep it.
-  // If it fails on Vercel, use explicit token:
-  await del(url, { token: process.env.BLOB_READ_WRITE_TOKEN });
+  if (!url.includes("/fafsa/")) {
+    return NextResponse.json({ error: "Refusing to delete outside fafsa/" }, { status: 400 });
+  }
+
+  await del(url);
 
   return NextResponse.json({ ok: true });
 }

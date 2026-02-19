@@ -13,6 +13,8 @@ interface DocDef {
   required: boolean;
 }
 
+type UploadInfo = { name: string; url: string };
+
 const GENERIC_DOCS: DocDef[] = [
   {
     id: "photo_id",
@@ -130,10 +132,12 @@ function UploadSlot({
   doc,
   uploaded,
   onUpload,
+  onRemove,
 }: {
   doc: DocDef;
-  uploaded: string | null;
-  onUpload: (docId: string, fileName: string) => void;
+  uploaded: UploadInfo | null;
+  onUpload: (docId: string, info: UploadInfo) => void;
+  onRemove: (docId: string, info: UploadInfo) => Promise<void>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -151,8 +155,9 @@ function UploadSlot({
       form.append("file", file);
       form.append("docType", doc.id);
       const res = await fetch("/api/upload", { method: "POST", body: form });
-      if (!res.ok) throw new Error("Upload failed");
-      onUpload(doc.id, file.name);
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "Upload failed");
+      onUpload(doc.id, { name: file.name, url: json.url });
     } catch (e) {
       setError("Upload failed — try again.");
     } finally {
@@ -207,24 +212,48 @@ function UploadSlot({
         {!noUpload && (
           <>
             {uploaded ? (
-              <div style={{ fontSize: 13, color: "var(--teal)", fontWeight: 600 }}>
-                ✓ {uploaded}
-              </div>
-            ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  className="btn"
-                  style={{ fontSize: 13, padding: "6px 12px" }}
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploading}
-                >
-                  {uploading ? "Uploading..." : "Upload file"}
-                </button>
-                {error && (
-                  <span style={{ fontSize: 12, color: "#ef4444" }}>{error}</span>
-                )}
-              </div>
-            )}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <a
+                href={uploaded.url}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: 13, color: "var(--teal)", fontWeight: 600, textDecoration: "none" }}
+              >
+                ✓ {uploaded.name}
+              </a>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  if (!confirm("Remove this uploaded file?")) return;
+                  await onRemove(doc.id, uploaded);
+                }}
+                style={{
+                  border: "1px solid var(--border)",
+                  background: "transparent",
+                  borderRadius: 10,
+                  padding: "6px 10px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  fontSize: 12,
+                }}
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                className="btn"
+                style={{ fontSize: 13, padding: "6px 12px" }}
+                onClick={() => fileRef.current?.click()}
+                disabled={uploading}
+              >
+                {uploading ? "Uploading..." : "Upload file"}
+              </button>
+              {error && <span style={{ fontSize: 12, color: "#ef4444" }}>{error}</span>}
+            </div>
+          )}
             <input
               ref={fileRef}
               type="file"
@@ -248,7 +277,7 @@ const STORAGE_KEY = "fafsa_uploads";
 
 export default function PreparationsPage() {
   const [fields, setFields] = useState<CollectedFields | null>(null);
-  const [uploaded, setUploaded] = useState<Record<string, string>>({});
+  const [uploaded, setUploaded] = useState<Record<string, UploadInfo>>({});
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -273,14 +302,26 @@ export default function PreparationsPage() {
       });
   }, []);
 
-  function handleUpload(docId: string, fileName: string) {
-    const next = { ...uploaded, [docId]: fileName };
-    setUploaded(next);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      // ignore
+  async function handleRemove(docId: string, info: UploadInfo) {
+    const res = await fetch(`/api/upload?url=${encodeURIComponent(info.url)}`, {
+      method: "DELETE",
+    });
+    const json = await res.json();
+    if (!res.ok) {
+      alert(json.error || "Delete failed");
+      return;
     }
+
+    const next = { ...uploaded };
+    delete next[docId];
+    setUploaded(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  }
+
+  function handleUpload(docId: string, info: UploadInfo) {
+    const next = { ...uploaded, [docId]: info };
+    setUploaded(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
   const isPersonalized =
@@ -356,6 +397,7 @@ export default function PreparationsPage() {
                   doc={doc}
                   uploaded={uploaded[doc.id] ?? null}
                   onUpload={handleUpload}
+                  onRemove={handleRemove}
                 />
               ))}
             </div>
