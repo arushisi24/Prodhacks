@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import AppShell from "@/components/AppShell";
 
 interface Message {
@@ -25,12 +26,14 @@ async function postJSON(url: string, body: object) {
 }
 
 export default function ChatPage() {
+  const router = useRouter();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [progress, setProgress] = useState(0);
   const [loading, setLoading] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const bootedRef = useRef(false);
 
   function scrollToBottom() {
     if (chatRef.current) {
@@ -44,10 +47,21 @@ export default function ChatPage() {
   }
 
   const bootWelcome = useCallback(async () => {
+    if (bootedRef.current) return;
+    bootedRef.current = true;
+    setMessages([]);
     try {
       const data = await postJSON("/api/chat", { message: "" });
-      const parts = (data.reply as string).split("\n\n");
-      for (const part of parts) if (part.trim()) addMessage("assistant", part.trim());
+      if (data.restore) {
+        // Restore full conversation history from server session
+        const msgs = data.messages as Array<{ role: string; content: string }>;
+        for (const m of msgs) {
+          addMessage(m.role === "user" ? "user" : "assistant", m.content);
+        }
+      } else {
+        const parts = (data.reply as string).split("\n\n");
+        for (const part of parts) if (part.trim()) addMessage("assistant", part.trim());
+      }
       setProgress((data.progress as number) ?? 0);
     } catch {
       addMessage(
@@ -74,6 +88,7 @@ export default function ChatPage() {
       const data = await postJSON("/api/chat", { message: msg });
       addMessage("assistant", data.reply as string);
       setProgress((data.progress as number) ?? 0);
+      if (data.done) setTimeout(() => router.push("/preparations"), 2500);
     } catch (err) {
       addMessage(
         "assistant",
@@ -86,6 +101,7 @@ export default function ChatPage() {
   }
 
   async function resetChat() {
+    bootedRef.current = false;
     try {
       await postJSON("/api/reset", {});
     } catch {

@@ -26,18 +26,22 @@ export interface SessionData {
   fields: CollectedFields;
 }
 
-const TOTAL_FIELDS = 14;
+// Independent students don't need parent_bank_name, so total is 13 for them
+const DEPENDENT_FIELDS = 14;
+const INDEPENDENT_FIELDS = 13;
 
 export function computeProgress(fields: CollectedFields): number {
+  const SKIP = fields.independent === true ? new Set(["parent_bank_name", "uploads"]) : new Set(["uploads"]);
+  const total = fields.independent === true ? INDEPENDENT_FIELDS : DEPENDENT_FIELDS;
   const count = Object.keys(fields).filter(
-    (k) => fields[k as keyof CollectedFields] !== undefined
+    (k) => !SKIP.has(k) && fields[k as keyof CollectedFields] !== undefined
   ).length;
-  return Math.min(count / TOTAL_FIELDS, 1);
+  return Math.min(count / total, 1);
 }
 
 export function encodeSession(data: SessionData): string {
   const trimmed: SessionData = {
-    messages: data.messages.slice(-15),
+    messages: data.messages.slice(-30),
     fields: data.fields,
   };
   return Buffer.from(JSON.stringify(trimmed)).toString("base64url");

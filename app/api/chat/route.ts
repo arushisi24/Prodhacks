@@ -74,6 +74,19 @@ export async function POST(req: NextRequest) {
 
   // Boot welcome
   if (!message.trim()) {
+    if (session.messages.length > 0) {
+      // Existing session — restore it without wiping
+      const progress = computeProgress(session.fields);
+      const res = NextResponse.json({
+        restore: true,
+        messages: session.messages,
+        progress,
+        done: false,
+      });
+      setCookie(res, session);
+      return res;
+    }
+    // No session yet — fresh start
     const fresh: SessionData = {
       messages: [{ role: "assistant", content: WELCOME }],
       fields: {},
@@ -125,6 +138,9 @@ export async function POST(req: NextRequest) {
   }
 
   const progress = computeProgress(session.fields);
+
+  // Safety net: force done if all 14 fields are collected, even if AI forgot to set it
+  if (!done && progress >= 1) done = true;
 
   const res = NextResponse.json({ reply, progress, done });
   setCookie(res, session);
