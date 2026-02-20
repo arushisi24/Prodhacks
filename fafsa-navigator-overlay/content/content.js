@@ -137,7 +137,7 @@ function highlightElement(selector, textFallbacks = []) {
 
   el.scrollIntoView({ behavior: "smooth", block: "center" });
   el.classList.add("fafsa-highlight");
-  setTimeout(() => placeArrow(el), 600);
+  setTimeout(() => placeArrow(el), 800);
 }
 
 function placeArrow(el) {
@@ -149,9 +149,9 @@ function placeArrow(el) {
   arrow.id = "fafsa-arrow";
   arrow.innerHTML = "\uD83D\uDC49";
   arrow.style.cssText =
-    "position:fixed;" +
-    "top:" + (rect.top + rect.height / 2 - 16) + "px;" +
-    "left:" + Math.max(rect.left - 44, 4) + "px;" +
+    "position:absolute;" +
+    "top:" + (rect.top + window.scrollY + rect.height / 2 - 16) + "px;" +
+    "left:" + Math.max(rect.left + window.scrollX - 44, 4) + "px;" +
     "font-size:28px;z-index:999999;pointer-events:none;";
   document.body.appendChild(arrow);
 }
