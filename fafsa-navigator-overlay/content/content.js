@@ -430,21 +430,19 @@ function autofillExtracted(data) {
   ];
 
   function fillByIds() {
-    console.log('FILL BY IDS RUNNING');
-    for (const { id, key } of ID_MAP) {
-      const value = data[key];
-      if (value == null) continue;
-      const el = document.getElementById(id);
-      console.log('LOOKING FOR', id, 'VALUE', value, 'FOUND', !!el);
-
-      if (el) {
-        fillInput(el, value);
-        el.style.outline = '2px solid #3a7bd5';
-        el.style.backgroundColor = '#f0f7ff';
-        setTimeout(() => { el.style.outline = ''; el.style.backgroundColor = ''; }, 3000);
+      console.log('FILL BY IDS RUNNING');
+      for (const { id, key } of ID_MAP) {
+        const value = data[key];
+        const fillValue = (value == null) ? 0 : value;
+        const el = document.getElementById(id);
+        if (el) {
+          fillInput(el, fillValue);
+          el.style.outline = '2px solid #3a7bd5';
+          el.style.backgroundColor = '#f0f7ff';
+          setTimeout(() => { el.style.outline = ''; el.style.backgroundColor = ''; }, 3000);
+        }
       }
     }
-  }
 
   function fillByLabels() {
     const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])');
@@ -478,56 +476,10 @@ function autofillExtracted(data) {
     }
   }
 
-  // Filing status radio
-  if (data.filing_status) {
-    const statusMap = {
-      'single': 'single',
-      'head_of_household': 'head of household',
-      'married_filing_jointly': 'married filing jointly',
-      'married_filing_separately': 'married filing separately',
-      'qualifying_surviving_spouse': 'qualifying surviving spouse',
-    };
-    const label = statusMap[data.filing_status];
-    if (label) {
-      setTimeout(() => clickRadioByText(label), 1500);
-    }
-  }
-
-  // Yes/No radios for EIC
-  if (data.received_eic === true || data.received_eic === false) {
-    setTimeout(() => {
-      const cards = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
-      for (const el of cards) {
-        const text = el.textContent.trim().toLowerCase();
-        const parent = el.closest('fsa-input, fieldset, div, section');
-        const parentText = parent ? parent.textContent.toLowerCase() : '';
-        if (parentText.includes('earned income credit') && text === (data.received_eic ? 'yes' : 'no')) {
-          el.click();
-          break;
-        }
-      }
-    }, 1500);
-  }
-
-  // Schedule A,B,D,E,F,H
-  if (data.filed_schedule_a_b_d_e_f_h === true || data.filed_schedule_a_b_d_e_f_h === false) {
-    setTimeout(() => {
-      const cards = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
-      for (const el of cards) {
-        const text = el.textContent.trim().toLowerCase();
-        const parent = el.closest('fsa-input, fieldset, div, section');
-        const parentText = parent ? parent.textContent.toLowerCase() : '';
-        if (parentText.includes('schedule a') && text === (data.filed_schedule_a_b_d_e_f_h ? 'yes' : 'no')) {
-          el.click();
-          break;
-        }
-      }
-    }, 1500);
-  }
 
   // Try ID-based fill first, then label-based as fallback
 // Wait for inputs to appear, retry up to 10 times
-  let attempts = 0;
+let attempts = 0;
   const tryFill = () => {
     attempts++;
     const found = document.getElementById('fsa_Input_StudentAdjustedGrossIncome');
@@ -535,13 +487,53 @@ function autofillExtracted(data) {
     if (found) {
       fillByIds();
       fillByLabels();
+
+      // Filing status radio
+      if (data.filing_status) {
+        const statusMap = {
+          'single': 'single',
+          'head_of_household': 'head of household',
+          'married_filing_jointly': 'married filing jointly',
+          'married_filing_separately': 'married filing separately',
+          'qualifying_surviving_spouse': 'qualifying surviving spouse',
+        };
+        const label = statusMap[data.filing_status];
+        if (label) clickRadioByText(label);
+      }
+
+      // EIC radio
+      if (data.received_eic === true || data.received_eic === false) {
+        const cards = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
+        for (const el of cards) {
+          const text = el.textContent.trim().toLowerCase();
+          const parent = el.closest('fsa-input, fieldset, div, section');
+          const parentText = parent ? parent.textContent.toLowerCase() : '';
+          if (parentText.includes('earned income credit') && text === (data.received_eic ? 'yes' : 'no')) {
+            el.click();
+            break;
+          }
+        }
+      }
+
+      // Schedule radio
+      if (data.filed_schedule_a_b_d_e_f_h === true || data.filed_schedule_a_b_d_e_f_h === false) {
+        const cards = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
+        for (const el of cards) {
+          const text = el.textContent.trim().toLowerCase();
+          const parent = el.closest('fsa-input, fieldset, div, section');
+          const parentText = parent ? parent.textContent.toLowerCase() : '';
+          if (parentText.includes('schedule a') && text === (data.filed_schedule_a_b_d_e_f_h ? 'yes' : 'no')) {
+            el.click();
+            break;
+          }
+        }
+      }
+
     } else if (attempts < 10) {
       setTimeout(tryFill, 1000);
     }
   };
   setTimeout(tryFill, 2000);
-
-  // Show in sidebar
   showExtractedInSidebar(data);
 }
 
