@@ -233,8 +233,12 @@ function init() {
 
   setTimeout(() => {
     injectSidebar(step);
+    chrome.storage.local.get(['fafsaExtracted'], ({ fafsaExtracted }) => {
+      if (fafsaExtracted) showExtractedInSidebar(fafsaExtracted);
+    });
   }, 1000);
 }
+
 
 init();
 
@@ -577,7 +581,6 @@ let attempts = 0;
     }
   };
   setTimeout(tryFill, 2000);
-  showExtractedInSidebar(data);
 }
 
 function showExtractedInSidebar(data) {
