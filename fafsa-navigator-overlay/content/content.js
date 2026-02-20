@@ -315,7 +315,7 @@ function autofill(fields) {
     }, 1500);
   }
 
-  // ── Assets ───────────────────────────────────────────────────────
+ // ── Assets ───────────────────────────────────────────────────────
   if (url.includes('student/assets') || url.includes('assets')) {
     const assetMap = {
       'under_5k': 2500,
@@ -326,22 +326,30 @@ function autofill(fields) {
     };
     const cashValue = assetMap[fields.asset_range] || 0;
 
-    setTimeout(() => {
-      const ids = [
-        { id: 'fsa_Input_StudentTotalOfCashSavingsAndCheckingAccounts', value: cashValue },
-        { id: 'fsa_Input_StudentNetWorthOfCurrentInvestments', value: 0 },
-        { id: 'fsa_Input_StudentNetWorthOfBusinessesInvestmentFarms', value: 0 },
-      ];
-      for (const { id, value } of ids) {
-        const el = document.getElementById(id);
-        if (el) {
-          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
-          setter.call(el, String(value));
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.dispatchEvent(new Event('change', { bubbles: true }));
+    let attempts = 0;
+    const tryFillAssets = () => {
+      attempts++;
+      const el = document.getElementById('fsa_Input_StudentTotalOfCashSavingsAndCheckingAccounts');
+      if (el) {
+        const ids = [
+          { id: 'fsa_Input_StudentTotalOfCashSavingsAndCheckingAccounts', value: cashValue },
+          { id: 'fsa_Input_StudentNetWorthOfCurrentInvestments', value: 0 },
+          { id: 'fsa_Input_StudentNetWorthOfBusinessesInvestmentFarms', value: 0 },
+        ];
+        for (const { id, value } of ids) {
+          const input = document.getElementById(id);
+          if (input) {
+            const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+            setter.call(input, String(value));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+          }
         }
+      } else if (attempts < 10) {
+        setTimeout(tryFillAssets, 1000);
       }
-    }, 3000);
+    };
+    setTimeout(tryFillAssets, 2000);
   }
 
   // ── Colleges ─────────────────────────────────────────────────────
