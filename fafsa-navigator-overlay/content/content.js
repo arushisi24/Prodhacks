@@ -526,10 +526,20 @@ function autofillExtracted(data) {
   }
 
   // Try ID-based fill first, then label-based as fallback
-  setTimeout(() => {
-    fillByIds();
-    fillByLabels();
-  }, 2000);
+// Wait for inputs to appear, retry up to 10 times
+  let attempts = 0;
+  const tryFill = () => {
+    attempts++;
+    const found = document.getElementById('fsa_Input_StudentAdjustedGrossIncome');
+    console.log('ATTEMPT', attempts, 'FOUND AGI INPUT:', !!found);
+    if (found) {
+      fillByIds();
+      fillByLabels();
+    } else if (attempts < 10) {
+      setTimeout(tryFill, 1000);
+    }
+  };
+  setTimeout(tryFill, 2000);
 
   // Show in sidebar
   showExtractedInSidebar(data);
