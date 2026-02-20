@@ -315,6 +315,35 @@ function autofill(fields) {
     }, 1500);
   }
 
+  // ── Assets ───────────────────────────────────────────────────────
+  if (url.includes('student/assets') || url.includes('assets')) {
+    const assetMap = {
+      'under_5k': 2500,
+      '5_20k': 12500,
+      '20_50k': 35000,
+      '50_100k': 75000,
+      'over_100k': 150000,
+    };
+    const cashValue = assetMap[fields.asset_range] || 0;
+
+    setTimeout(() => {
+      const ids = [
+        { id: 'fsa_Input_StudentTotalOfCashSavingsAndCheckingAccounts', value: cashValue },
+        { id: 'fsa_Input_StudentNetWorthOfCurrentInvestments', value: 0 },
+        { id: 'fsa_Input_StudentNetWorthOfBusinessesInvestmentFarms', value: 0 },
+      ];
+      for (const { id, value } of ids) {
+        const el = document.getElementById(id);
+        if (el) {
+          const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set;
+          setter.call(el, String(value));
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+    }, 3000);
+  }
+
   // ── Colleges ─────────────────────────────────────────────────────
   if (url.includes('student/colleges') || url.includes('colleges')) {
     setTimeout(() => {
