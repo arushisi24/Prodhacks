@@ -381,6 +381,7 @@ chrome.storage.onChanged.addListener((changes) => {
 });
 
 function autofillExtracted(data) {
+  console.log('AUTOFILL EXTRACTED CALLED', data);
   const url = window.location.href;
   if (!url.includes('fafsa-apply')) return;
 
