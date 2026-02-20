@@ -399,16 +399,13 @@ function autofillExtracted(data) {
     { id: 'fsa_Input_StudentIncomeEarnedFromWork', key: 'income_earned_from_work' },
     { id: 'fsa_Input_StudentTaxExemptInterestIncome', key: 'tax_exempt_interest_income' },
     { id: 'fsa_Input_StudentUntaxedPortionsOfIraDistributions', key: 'untaxed_ira_distributions' },
-    { id: 'fsa_Input_StudentIraRollover', key: 'ira_rollover' },
     { id: 'fsa_Input_StudentUntaxedPortionsOfPensions', key: 'untaxed_pensions' },
-    { id: 'fsa_Input_StudentPensionRollover', key: 'pension_rollover' },
     { id: 'fsa_Input_StudentAdjustedGrossIncome', key: 'adjusted_gross_income' },
     { id: 'fsa_Input_StudentIncomeTaxPaid', key: 'income_tax_paid' },
-    { id: 'fsa_Input_StudentIraDeductions', key: 'ira_deductions_sep_simple' },
+    { id: 'fsa_Input_StudentIraKeoghOtherDeductiblePayments', key: 'ira_deductions_sep_simple' },
     { id: 'fsa_Input_StudentEducationCredits', key: 'education_credits' },
-    { id: 'fsa_Input_StudentScheduleCNetProfit', key: 'schedule_c_net_profit' },
-    { id: 'fsa_Input_StudentCollegeGrantsReported', key: 'college_grants_reported_as_income' },
-    { id: 'fsa_Input_StudentForeignEarnedIncomeExclusion', key: 'foreign_earned_income_exclusion' },
+    { id: 'fsa_Input_StudentCollegeGrantAndScholarshipAid', key: 'college_grants_reported_as_income' },
+    { id: 'fsa_Input_StudentForeignIncomeExemptFromFederalTaxation', key: 'foreign_earned_income_exclusion' },
   ];
 
   // Also try matching by aria-labelledby text as fallback
