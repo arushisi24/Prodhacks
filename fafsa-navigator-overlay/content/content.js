@@ -360,7 +360,6 @@ function autofill(fields) {
 }
 
 loadAndAutofill();
-
 // ─── Extracted Financial Data Autofill ────────────────────────────────────────
 
 function loadAndAutofillExtracted() {
@@ -372,9 +371,10 @@ function loadAndAutofillExtracted() {
 
 function autofillExtracted(data) {
   const url = window.location.href;
+  if (!url.includes('fafsa-apply')) return;
 
   function fillInput(el, value) {
-    if (!el || !value) return;
+    if (!el || value == null) return;
     const nativeSetter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype, 'value'
     ).set;
@@ -383,47 +383,172 @@ function autofillExtracted(data) {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  // Only run on finance-related pages
-  if (url.includes('finances') || url.includes('financial') || url.includes('tax')) {
-    setTimeout(() => {
-      // Map extracted fields to possible input selectors
-      const financeMap = [
-        { keys: ['adjusted_gross_income'], selectors: ['input[id*="agi"], input[id*="gross"], input[aria-label*="adjusted gross"], input[aria-label*="AGI"]'] },
-        { keys: ['income_tax_paid'], selectors: ['input[id*="tax-paid"], input[id*="incomeTax"], input[aria-label*="income tax paid"], input[aria-label*="tax paid"]'] },
-        { keys: ['wages_salary'], selectors: ['input[id*="wage"], input[id*="salary"], input[id*="earning"], input[aria-label*="wage"], input[aria-label*="earning"]'] },
-        { keys: ['interest_income'], selectors: ['input[id*="interest"], input[aria-label*="interest income"]'] },
-        { keys: ['untaxed_ira_distributions'], selectors: ['input[id*="ira"], input[aria-label*="IRA"], input[aria-label*="untaxed"]'] },
-        { keys: ['tax_exempt_interest'], selectors: ['input[id*="exempt"], input[aria-label*="tax-exempt"], input[aria-label*="tax exempt"]'] },
-        { keys: ['education_credits'], selectors: ['input[id*="education"], input[aria-label*="education credit"]'] },
-      ];
-
-      for (const { keys, selectors } of financeMap) {
-        for (const key of keys) {
-          const value = data[key];
-          if (value == null) continue;
-
-          for (const selectorGroup of selectors) {
-            const el = document.querySelector(selectorGroup);
-            if (el) {
-              fillInput(el, value);
-              break;
-            }
-          }
-        }
+  function clickRadioByText(text) {
+    const els = document.querySelectorAll('div[class*="fsa-radio-button"], label');
+    for (const el of els) {
+      if (el.textContent.trim().toLowerCase().includes(text.toLowerCase())) {
+        el.click();
+        return true;
       }
+    }
+    return false;
+  }
 
-      // Filing status — click matching radio
-      if (data.filing_status) {
-        const radioDivs = document.querySelectorAll('div[class*="fsa-radio-button"], label');
-        for (const el of radioDivs) {
-          if (el.textContent.trim().toLowerCase().includes(data.filing_status.toLowerCase())) {
-            el.click();
+  // Map of FAFSA label keywords → extracted data keys
+  const LABEL_TO_KEY = [
+    { labels: ['income earned from work'], key: 'income_earned_from_work' },
+    { labels: ['tax exempt interest', 'tax-exempt interest'], key: 'tax_exempt_interest_income' },
+    { labels: ['untaxed portions of ira', 'untaxed ira'], key: 'untaxed_ira_distributions' },
+    { labels: ['ira rollover'], key: 'ira_rollover' },
+    { labels: ['untaxed portions of pensions', 'untaxed pensions'], key: 'untaxed_pensions' },
+    { labels: ['pension rollover'], key: 'pension_rollover' },
+    { labels: ['adjusted gross income'], key: 'adjusted_gross_income' },
+    { labels: ['income tax paid'], key: 'income_tax_paid' },
+    { labels: ['ira deductions', 'sep, simple'], key: 'ira_deductions_sep_simple' },
+    { labels: ['education credits', 'american opportunity', 'lifetime learning'], key: 'education_credits' },
+    { labels: ['net profit or loss', 'schedule c'], key: 'schedule_c_net_profit' },
+    { labels: ['college grants', 'scholarships', 'americorps'], key: 'college_grants_reported_as_income' },
+    { labels: ['foreign earned income'], key: 'foreign_earned_income_exclusion' },
+  ];
+
+  // Find all inputs on the page and match by nearby label text
+  function findAndFillByLabel() {
+    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])');
+
+    for (const input of allInputs) {
+      // Get the label text associated with this input
+      const labelText = getInputLabel(input);
+      if (!labelText) continue;
+      const lower = labelText.toLowerCase();
+
+      for (const { labels, key } of LABEL_TO_KEY) {
+        const value = data[key];
+        if (value == null) continue;
+
+        for (const label of labels) {
+          if (lower.includes(label)) {
+            fillInput(input, value);
+            // Highlight the field briefly so user sees it was filled
+            input.style.outline = '2px solid #3a7bd5';
+            input.style.backgroundColor = '#f0f7ff';
+            setTimeout(() => {
+              input.style.outline = '';
+              input.style.backgroundColor = '';
+            }, 3000);
             break;
           }
         }
       }
+    }
+  }
+
+  function getInputLabel(input) {
+    // Try label[for]
+    if (input.id) {
+      const label = document.querySelector(`label[for="${input.id}"]`);
+      if (label) return label.textContent.trim();
+    }
+    // Try parent label
+    const parentLabel = input.closest('label');
+    if (parentLabel) return parentLabel.textContent.trim();
+    // Try aria-label
+    if (input.getAttribute('aria-label')) return input.getAttribute('aria-label');
+    // Try aria-describedby
+    const describedBy = input.getAttribute('aria-describedby');
+    if (describedBy) {
+      const desc = document.getElementById(describedBy);
+      if (desc) return desc.textContent.trim();
+    }
+    // Try previous sibling or parent's text
+    const parent = input.closest('div, fieldset, section');
+    if (parent) return parent.textContent.trim().substring(0, 200);
+    return null;
+  }
+
+  // Filing status radio
+  if (data.filing_status) {
+    const statusMap = {
+      'single': 'single',
+      'head_of_household': 'head of household',
+      'married_filing_jointly': 'married filing jointly',
+      'married_filing_separately': 'married filing separately',
+      'qualifying_surviving_spouse': 'qualifying surviving spouse',
+    };
+    const label = statusMap[data.filing_status];
+    if (label) {
+      setTimeout(() => clickRadioByText(label), 1500);
+    }
+  }
+
+  // Yes/No radios
+  if (data.received_eic === true) {
+    setTimeout(() => {
+      const labels = document.querySelectorAll('div[class*="fsa-radio-button"], label');
+      for (const el of labels) {
+        const text = el.textContent.trim().toLowerCase();
+        const parent = el.closest('fieldset, div, section');
+        const parentText = parent ? parent.textContent.toLowerCase() : '';
+        if (parentText.includes('earned income credit') && text === 'yes') {
+          el.click();
+          break;
+        }
+      }
     }, 1500);
   }
+
+  if (data.filed_schedule_a_b_d_e_f_h === true || data.filed_schedule_a_b_d_e_f_h === false) {
+    setTimeout(() => {
+      const labels = document.querySelectorAll('div[class*="fsa-radio-button"], label');
+      for (const el of labels) {
+        const text = el.textContent.trim().toLowerCase();
+        const parent = el.closest('fieldset, div, section');
+        const parentText = parent ? parent.textContent.toLowerCase() : '';
+        if (parentText.includes('schedule a') && text === (data.filed_schedule_a_b_d_e_f_h ? 'yes' : 'no')) {
+          el.click();
+          break;
+        }
+      }
+    }, 1500);
+  }
+
+  // Run with delay to let Angular render
+  setTimeout(findAndFillByLabel, 2000);
+
+  // Also show suggestions in the sidebar
+  showExtractedInSidebar(data);
+}
+
+function showExtractedInSidebar(data) {
+  const sidebar = document.getElementById('fafsa-sidebar');
+  if (!sidebar) return;
+
+  const body = sidebar.querySelector('.fafsa-body');
+  if (!body) return;
+
+  // Check if we already added the extracted section
+  if (document.getElementById('fafsa-extracted-info')) return;
+
+  const section = document.createElement('div');
+  section.id = 'fafsa-extracted-info';
+  section.style.cssText = 'margin-top:14px; background:#f0f7ff; border:1px solid #b3d4f7; border-radius:8px; padding:12px; font-size:12px;';
+
+  const items = [
+    { label: 'AGI', key: 'adjusted_gross_income' },
+    { label: 'Income Tax Paid', key: 'income_tax_paid' },
+    { label: 'Income from Work', key: 'income_earned_from_work' },
+    { label: 'Filing Status', key: 'filing_status' },
+  ];
+
+  let html = '<div style="font-weight:700;color:#1a4480;margin-bottom:8px;">📄 From Your Documents</div>';
+  for (const { label, key } of items) {
+    const val = data[key];
+    if (val == null) continue;
+    const display = typeof val === 'number' ? '$' + val.toLocaleString() : val.replace(/_/g, ' ');
+    html += `<div style="display:flex;justify-content:space-between;margin-bottom:4px;"><span style="color:#5a7a9a;">${label}</span><strong>${display}</strong></div>`;
+  }
+
+  section.innerHTML = html;
+  body.appendChild(section);
 }
 
 loadAndAutofillExtracted();
