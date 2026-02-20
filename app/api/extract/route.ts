@@ -34,24 +34,17 @@ export async function POST(req: NextRequest) {
 
     const fileRes = await fetch(blobUrl);
     const buffer = Buffer.from(await fileRes.arrayBuffer());
-    const base64 = buffer.toString("base64");
 
     const isPdf = blobUrl.toLowerCase().includes(".pdf") || fileRes.headers.get("content-type")?.includes("pdf");
 
     let userContent: any;
 
     if (isPdf) {
-      userContent = [
-        {
-          type: "file",
-          file: {
-            filename: "tax_document.pdf",
-            file_data: `data:application/pdf;base64,${base64}`
-          }
-        },
-        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
-      ];
+      const pdfParse = (await import("pdf-parse")).default;
+      const pdfData = await pdfParse(buffer);
+      userContent = `Here is the text extracted from a ${fileType || "tax document"}:\n\n${pdfData.text}\n\nExtract all FAFSA-relevant financial data as JSON.`;
     } else {
+      const base64 = buffer.toString("base64");
       const mime = blobUrl.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
       userContent = [
         { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
