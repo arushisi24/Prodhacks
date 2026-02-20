@@ -2,7 +2,7 @@ console.log('FAFSA BUDDY CONTENT SCRIPT LOADED');
 const STEPS = [
   {
     match: "fsa-id/create-account/verify",
-    step: 3, total: 9,
+    step: 3, total: 8,
     title: "Step 3: Verify Your Identity",
     instruction: "Almost there! Check your <strong>email or phone</strong> for a verification code and enter it here.<br><br>Once verified, your account will be created! \u2705",
     tip: "\uD83D\uDCA1 Your account won't be <em>fully</em> active until the SSA verifies your SSN \u2014 this takes 1\u20133 days. But you can start your FAFSA right away!",
@@ -12,7 +12,7 @@ const STEPS = [
   },
   {
     match: "fsa-id/create-account",
-    step: 2, total: 9,
+    step: 2, total: 8,
     title: "Step 2: Fill Out Your Info",
     instruction: "You'll need to fill out the following:<br><br><ul><li>\uD83D\uDCDB Full legal name</li><li>\uD83C\uDF82 Date of birth</li><li>\uD83D\uDD12 Social Security Number (SSN)</li><li>\uD83D\uDC64 Username &amp; password</li><li>\uD83D\uDCE7 Email address</li><li>\uD83D\uDCF1 Mobile phone number</li><li>\u2753 Challenge questions</li></ul>",
     tip: "\uD83D\uDCA1 Use an email and phone number only <em>you</em> have access to \u2014 they can only be linked to one FSA ID.",
@@ -22,7 +22,7 @@ const STEPS = [
   },
   {
     match: "fsa-id/sign-in",
-    step: 4, total: 9,
+    step: 4, total: 8,
     title: "Step 4: Sign In",
     instruction: "Great \u2014 now <strong>sign in</strong> with the username and password you just created.<br><br>\uD83D\uDC49 Enter your username (or email/phone) and password below.",
     tip: "\uD83D\uDCA1 Saved your backup code? Keep it somewhere safe \u2014 you'll need it if you ever get locked out.",
@@ -32,8 +32,8 @@ const STEPS = [
   },
 {
     match: "2026-27/review-before-signing",
-    step: 9, total: 9,
-    title: "Step 9: Review & Sign 🎉",
+    step: 8, total: 8,
+    title: "Step 8: Review & Sign 🎉",
     instruction: "You're almost done! Review your information carefully, then sign and submit your FAFSA.<br><br>Once submitted, you'll receive a confirmation email.",
     tip: "💡 After submitting, check your email for your Student Aid Report (SAR) within 3–5 days.",
     selector: 'button',
@@ -42,8 +42,8 @@ const STEPS = [
   },
   {
     match: "fafsa-apply",
-    step: 8, total: 9,
-    title: "Step 8: Fill Out Your FAFSA 📝",
+    step: 7, total: 8,
+    title: "Step 7: Fill Out Your FAFSA 📝",
     instruction: "We're autofilling what we know from your profile. Fill in anything we missed, then click <strong>Continue</strong> at the bottom of each page.",
     tip: "💡 Not sure about a field? Head back to the FAFSA Buddy chat at prodhacks3.vercel.app and ask.",
     selector: 'button',
@@ -52,7 +52,7 @@ const STEPS = [
   },
   {
     match: "apply-for-aid/fafsa",
-    step: 6, total: 9,
+    step: 6, total: 8,
     title: "Step 6: Start or Continue Your FAFSA 📝",
     instruction: "You're in the right place! Now choose your option:<br><br><ul><li>📄 <strong>Start a new FAFSA</strong> — if you haven't filled one out for this school year yet</li><li>✏️ <strong>Edit a saved FAFSA</strong> — if you already started one and want to continue</li></ul>",
     tip: "💡 Make sure you're applying for the correct award year — most students apply for the upcoming school year.",
@@ -63,7 +63,7 @@ const STEPS = [
 
   {
     match: "fafsa-apply/2026-27/roles",
-    step: 7, total: 9,
+    step: 7, total: 8,
     title: "Step 7: Select Your Role",
     instruction: "Choose who is filling out this FAFSA:<br><br><ul><li>🎓 <strong>Student</strong> — if you're the one applying for aid</li><li>👨‍👩‍👧 <strong>Parent</strong> — if you're helping your child apply</li></ul>",
     tip: "💡 Each person needs their own FSA ID to sign the form.",
@@ -73,7 +73,7 @@ const STEPS = [
   },
   {
     match: "studentaid.gov/dashboard",
-    step: 5, total: 9,
+    step: 5, total: 8,
     title: "Step 5: You're Logged In! \uD83C\uDF89",
     instruction: "You're on your dashboard. Time to start your FAFSA!<br><br>\uD83D\uDC49 Click <strong>\"Start a New FAFSA\"</strong> or find your form under <strong>\"My Activity\"</strong> to begin.",
     tip: "\uD83D\uDCA1 Already started a FAFSA? It will appear under 'My Activity' so you can pick up where you left off.",
@@ -83,7 +83,7 @@ const STEPS = [
   },
   {
     match: "studentaid.gov/",
-    step: 1, total: 9,
+    step: 1, total: 8,
     title: "Step 1: Create Your Account",
     instruction: "To fill out the FAFSA, you first need a <strong>StudentAid.gov account</strong> (also called an FSA ID).<br><br>\uD83D\uDC49 Click <strong>\"Create Account\"</strong> in the top right corner of the page to get started.",
     tip: "\uD83D\uDCA1 Both the student <em>and</em> a parent will each need their own separate account.",
