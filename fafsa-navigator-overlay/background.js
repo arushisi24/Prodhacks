@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 console.log('FAFSA Navigator: service worker started');
 
 // Show welcome modal on first install
@@ -8,6 +7,4 @@ chrome.runtime.onInstalled.addListener((details) => {
     chrome.storage.local.set({ hasSeenWelcome: false });
   }
 });
-=======
 console.log('FAFSA Navigator: background service worker started');
->>>>>>> 99a48be67d4730fd378007dabc0326afcf5188f2

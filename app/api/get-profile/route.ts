@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { redis } from "@/lib/redis";
 
 export async function GET(req: NextRequest) {
-  const sid = req.cookies.get("fafsa_sid")?.value;
+  const sid = req.nextUrl.searchParams.get("sid") || req.cookies.get("fafsa_sid")?.value;
   if (!sid) return NextResponse.json({ error: "No session" }, { status: 404 });
 
   const fields = await redis.get(`fafsa:fields:${sid}`);
