@@ -364,22 +364,22 @@ loadAndAutofill();
 // ─── Extracted Financial Data Autofill ────────────────────────────────────────
 
 function loadAndAutofillExtracted() {
+  
+  
   chrome.storage.local.get(['fafsaExtracted'], ({ fafsaExtracted }) => {
     if (!fafsaExtracted) return;
     autofillExtracted(fafsaExtracted);
   });
 }
 
-loadAndAutofillExtracted();
-
-chrome.storage.onChanged.addListener((changes) => {
-  if (changes.fafsaExtracted && changes.fafsaExtracted.newValue) {
-    autofillExtracted(changes.fafsaExtracted.newValue);
-  }
-  if (changes.fafsaProfile && changes.fafsaProfile.newValue) {
-    autofill(changes.fafsaProfile.newValue);
-  }
-});
+function loadAndAutofillExtracted() {
+  console.log('LOAD AND AUTOFILL CALLED');
+  chrome.storage.local.get(['fafsaExtracted'], ({ fafsaExtracted }) => {
+    console.log('GOT FROM STORAGE:', !!fafsaExtracted);
+    if (!fafsaExtracted) return;
+    autofillExtracted(fafsaExtracted);
+  });
+}
 
 function autofillExtracted(data) {
   console.log('AUTOFILL EXTRACTED CALLED', data);
