@@ -1,7 +1,7 @@
 const STEPS = [
   {
     match: "fsa-id/create-account/verify",
-    step: 3, total: 6,
+    step: 3, total: 8,
     title: "Step 3: Verify Your Identity",
     instruction: "Almost there! Check your <strong>email or phone</strong> for a verification code and enter it here.<br><br>Once verified, your account will be created! \u2705",
     tip: "\uD83D\uDCA1 Your account won't be <em>fully</em> active until the SSA verifies your SSN \u2014 this takes 1\u20133 days. But you can start your FAFSA right away!",
@@ -11,7 +11,7 @@ const STEPS = [
   },
   {
     match: "fsa-id/create-account",
-    step: 2, total: 6,
+    step: 2, total: 8,
     title: "Step 2: Fill Out Your Info",
     instruction: "You'll need to fill out the following:<br><br><ul><li>\uD83D\uDCDB Full legal name</li><li>\uD83C\uDF82 Date of birth</li><li>\uD83D\uDD12 Social Security Number (SSN)</li><li>\uD83D\uDC64 Username &amp; password</li><li>\uD83D\uDCE7 Email address</li><li>\uD83D\uDCF1 Mobile phone number</li><li>\u2753 Challenge questions</li></ul>",
     tip: "\uD83D\uDCA1 Use an email and phone number only <em>you</em> have access to \u2014 they can only be linked to one FSA ID.",
@@ -21,7 +21,7 @@ const STEPS = [
   },
   {
     match: "fsa-id/sign-in",
-    step: 4, total: 6,
+    step: 4, total: 8,
     title: "Step 4: Sign In",
     instruction: "Great \u2014 now <strong>sign in</strong> with the username and password you just created.<br><br>\uD83D\uDC49 Enter your username (or email/phone) and password below.",
     tip: "\uD83D\uDCA1 Saved your backup code? Keep it somewhere safe \u2014 you'll need it if you ever get locked out.",
@@ -30,18 +30,39 @@ const STEPS = [
     scrollTo: true,
   },
   {
+    match: "fafsa-apply",
+    step: 8, total: 8,
+    title: "Step 8: Fill Out Your FAFSA 📝",
+    instruction: "We're autofilling what we know from your profile. Fill in anything we missed, then click <strong>Continue</strong> at the bottom of each page.",
+    tip: "💡 Not sure about a field? Head back to the FAFSA Buddy chat at prodhacks3.vercel.app and ask.",
+    selector: 'button',
+    textFallbacks: ["continue", "save and continue", "next"],
+    scrollTo: true,
+  },
+  {
     match: "apply-for-aid/fafsa",
-    step: 6, total: 6,
-    title: "Step 6: Fill Out Your FAFSA \uD83D\uDCDD",
-    instruction: "You're on the FAFSA form! Work through each section:<br><br><ul><li>\uD83C\uDF93 Student info</li><li>\uD83D\uDC68\u200D\uD83D\uDC69\u200D\uD83D\uDC67 Parent/household info</li><li>\uD83D\uDCB0 Financial information</li><li>\uD83C\uDFEB Schools to send aid to</li><li>\u270D\uFE0F Sign &amp; submit</li></ul>",
-    tip: "\uD83D\uDCA1 We'll guide you through each field as you go. Click 'Show me where' for help on any section!",
-    selector: 'button, input[type="text"]',
-    textFallbacks: ["continue", "next", "save"],
-    scrollTo: false,
+    step: 6, total: 8,
+    title: "Step 6: Start or Continue Your FAFSA 📝",
+    instruction: "You're in the right place! Now choose your option:<br><br><ul><li>📄 <strong>Start a new FAFSA</strong> — if you haven't filled one out for this school year yet</li><li>✏️ <strong>Edit a saved FAFSA</strong> — if you already started one and want to continue</li></ul>",
+    tip: "💡 Make sure you're applying for the correct award year — most students apply for the upcoming school year.",
+    selector: 'button, a',
+    textFallbacks: ["start new form", "edit existing", "start a new", "continue", "edit"],
+    scrollTo: true,
+  },
+
+  {
+    match: "fafsa-apply/2026-27/roles",
+    step: 7, total: 8,
+    title: "Step 7: Select Your Role",
+    instruction: "Choose who is filling out this FAFSA:<br><br><ul><li>🎓 <strong>Student</strong> — if you're the one applying for aid</li><li>👨‍👩‍👧 <strong>Parent</strong> — if you're helping your child apply</li></ul>",
+    tip: "💡 Each person needs their own FSA ID to sign the form.",
+    selector: 'button, a, [role="button"]',
+    textFallbacks: ["student", "parent"],
+    scrollTo: true,
   },
   {
     match: "studentaid.gov/dashboard",
-    step: 5, total: 6,
+    step: 5, total: 8,
     title: "Step 5: You're Logged In! \uD83C\uDF89",
     instruction: "You're on your dashboard. Time to start your FAFSA!<br><br>\uD83D\uDC49 Click <strong>\"Start a New FAFSA\"</strong> or find your form under <strong>\"My Activity\"</strong> to begin.",
     tip: "\uD83D\uDCA1 Already started a FAFSA? It will appear under 'My Activity' so you can pick up where you left off.",
@@ -51,7 +72,7 @@ const STEPS = [
   },
   {
     match: "studentaid.gov/",
-    step: 1, total: 6,
+    step: 1, total: 8,
     title: "Step 1: Create Your Account",
     instruction: "To fill out the FAFSA, you first need a <strong>StudentAid.gov account</strong> (also called an FSA ID).<br><br>\uD83D\uDC49 Click <strong>\"Create Account\"</strong> in the top right corner of the page to get started.",
     tip: "\uD83D\uDCA1 Both the student <em>and</em> a parent will each need their own separate account.",
@@ -229,6 +250,84 @@ async function loadAndAutofill() {
 }
 
 function autofill(fields) {
+  const url = window.location.href;
+
+  // ── Helper: fill a text input and trigger React events ────────────
+  function fillInput(el, value) {
+    if (!el || !value) return;
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    ).set;
+    nativeSetter.call(el, value);
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // ── Helper: click a radio/button by matching text ─────────────────
+  function clickByText(text) {
+    const els = document.querySelectorAll('div[class*="fsa-radio-button"], button, label');
+    for (const el of els) {
+      if (el.textContent.trim().toLowerCase().includes(text.toLowerCase())) {
+        el.click();
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // ── Helper: auto-click blue continue button ───────────────────────
+  function clickContinue() {
+    const btns = document.querySelectorAll('button');
+    for (const btn of btns) {
+      const text = btn.textContent.trim().toLowerCase();
+      if (text.includes('continue') || text.includes('next') || text.includes('save and continue')) {
+        btn.click();
+        return;
+      }
+    }
+  }
+
+  // ── Personal circumstances — auto-click continue ──────────────────
+  if (url.includes('personal-circumstances')) {
+    setTimeout(() => {
+      // Auto-select marital status
+      if (fields.independent === false) {
+        clickByText('single (never married)');
+      }
+      // Point to continue — don't auto-click, let user review
+    }, 1500);
+  }
+
+  // ── Demographics — just point to continue ────────────────────────
+  // No autofill needed, guide points to continue button
+
+  // ── Finances ─────────────────────────────────────────────────────
+  if (url.includes('student/finances') || url.includes('finances')) {
+    setTimeout(() => {
+      // Did student file taxes?
+      if (fields.filed_taxes === true || fields.has_w2 === true) {
+        clickByText('already completed');
+        clickByText('will file');
+      } else if (fields.filed_taxes === false) {
+        clickByText('not going to file');
+      }
+    }, 1500);
+  }
+
+  // ── Colleges ─────────────────────────────────────────────────────
+  if (url.includes('student/colleges') || url.includes('colleges')) {
+    setTimeout(() => {
+      if (fields.schools && fields.schools.length > 0) {
+        const schoolInput = document.querySelector('input[id*="school"], input[placeholder*="school"], input[aria-label*="school"], input[type="search"]');
+        if (schoolInput) {
+          fillInput(schoolInput, fields.schools[0]);
+          schoolInput.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+      }
+    }, 1500);
+  }
+
+  // ── General: fill name/dob/email on any page ──────────────────────
   const fieldMap = [
     { selector: 'input[name="firstName"], input[id*="first"]', value: fields.student_name?.split(' ')[0] },
     { selector: 'input[name="lastName"], input[id*="last"]', value: fields.student_name?.split(' ').slice(1).join(' ') },
@@ -240,13 +339,23 @@ function autofill(fields) {
     if (!value) continue;
     const el = document.querySelector(selector);
     if (!el) continue;
+    fillInput(el, value);
+  }
 
-    const nativeSetter = Object.getOwnPropertyDescriptor(
-      window.HTMLInputElement.prototype, 'value'
-    ).set;
-    nativeSetter.call(el, value);
-    el.dispatchEvent(new Event('input', { bubbles: true }));
-    el.dispatchEvent(new Event('change', { bubbles: true }));
+  // ── Role selection ────────────────────────────────────────────────
+  if (url.includes('roles')) {
+    const role = fields.user_role;
+    if (role) {
+      setTimeout(() => {
+        const allDivs = document.querySelectorAll('div[class*="fsa-radio-button"]');
+        for (const el of allDivs) {
+          if (el.textContent.trim().toLowerCase().includes(role)) {
+            el.click();
+            break;
+          }
+        }
+      }, 2000);
+    }
   }
 }
 
