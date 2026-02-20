@@ -363,9 +363,10 @@ loadAndAutofill();
 // ─── Extracted Financial Data Autofill ────────────────────────────────────────
 
 function loadAndAutofillExtracted() {
-  chrome.storage.local.get(['fafsaExtracted'], ({ fafsaExtracted }) => {
-    if (!fafsaExtracted) return;
-    autofillExtracted(fafsaExtracted);
+  chrome.storage.onChanged.addListener((changes) => {
+    if (changes.fafsaExtracted && changes.fafsaExtracted.newValue) {
+      autofillExtracted(changes.fafsaExtracted.newValue);
+    }
   });
 }
 
