@@ -265,7 +265,7 @@ function autofill(fields) {
 
   // ── Helper: click a radio/button by matching text ─────────────────
   function clickByText(text) {
-    const els = document.querySelectorAll('div[class*="fsa-radio-button"], button, label');
+    const els = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], button, label');
     for (const el of els) {
       if (el.textContent.trim().toLowerCase().includes(text.toLowerCase())) {
         el.click();
@@ -384,7 +384,7 @@ function autofillExtracted(data) {
   }
 
   function clickRadioByText(text) {
-    const els = document.querySelectorAll('div[class*="fsa-radio-button"], label');
+    const els = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
     for (const el of els) {
       if (el.textContent.trim().toLowerCase().includes(text.toLowerCase())) {
         el.click();
@@ -394,7 +394,24 @@ function autofillExtracted(data) {
     return false;
   }
 
-  // Map of FAFSA label keywords → extracted data keys
+  // Direct ID mapping for Student tax return fields
+  const ID_MAP = [
+    { id: 'fsa_Input_StudentIncomeEarnedFromWork', key: 'income_earned_from_work' },
+    { id: 'fsa_Input_StudentTaxExemptInterestIncome', key: 'tax_exempt_interest_income' },
+    { id: 'fsa_Input_StudentUntaxedPortionsOfIraDistributions', key: 'untaxed_ira_distributions' },
+    { id: 'fsa_Input_StudentIraRollover', key: 'ira_rollover' },
+    { id: 'fsa_Input_StudentUntaxedPortionsOfPensions', key: 'untaxed_pensions' },
+    { id: 'fsa_Input_StudentPensionRollover', key: 'pension_rollover' },
+    { id: 'fsa_Input_StudentAdjustedGrossIncome', key: 'adjusted_gross_income' },
+    { id: 'fsa_Input_StudentIncomeTaxPaid', key: 'income_tax_paid' },
+    { id: 'fsa_Input_StudentIraDeductions', key: 'ira_deductions_sep_simple' },
+    { id: 'fsa_Input_StudentEducationCredits', key: 'education_credits' },
+    { id: 'fsa_Input_StudentScheduleCNetProfit', key: 'schedule_c_net_profit' },
+    { id: 'fsa_Input_StudentCollegeGrantsReported', key: 'college_grants_reported_as_income' },
+    { id: 'fsa_Input_StudentForeignEarnedIncomeExclusion', key: 'foreign_earned_income_exclusion' },
+  ];
+
+  // Also try matching by aria-labelledby text as fallback
   const LABEL_TO_KEY = [
     { labels: ['income earned from work'], key: 'income_earned_from_work' },
     { labels: ['tax exempt interest', 'tax-exempt interest'], key: 'tax_exempt_interest_income' },
@@ -411,58 +428,50 @@ function autofillExtracted(data) {
     { labels: ['foreign earned income'], key: 'foreign_earned_income_exclusion' },
   ];
 
-  // Find all inputs on the page and match by nearby label text
-  function findAndFillByLabel() {
-    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])');
+  function fillByIds() {
+    for (const { id, key } of ID_MAP) {
+      const value = data[key];
+      if (value == null) continue;
+      const el = document.getElementById(id);
+      if (el) {
+        fillInput(el, value);
+        el.style.outline = '2px solid #3a7bd5';
+        el.style.backgroundColor = '#f0f7ff';
+        setTimeout(() => { el.style.outline = ''; el.style.backgroundColor = ''; }, 3000);
+      }
+    }
+  }
 
+  function fillByLabels() {
+    const allInputs = document.querySelectorAll('input[type="text"], input[type="number"], input:not([type])');
     for (const input of allInputs) {
-      // Get the label text associated with this input
-      const labelText = getInputLabel(input);
+      const labelId = input.getAttribute('aria-labelledby');
+      const descId = input.getAttribute('aria-describedby');
+      let labelText = '';
+      if (labelId) {
+        const lbl = document.getElementById(labelId);
+        if (lbl) labelText = lbl.textContent.trim().toLowerCase();
+      }
+      if (!labelText && descId) {
+        const desc = document.getElementById(descId);
+        if (desc) labelText = desc.textContent.trim().toLowerCase();
+      }
       if (!labelText) continue;
-      const lower = labelText.toLowerCase();
 
       for (const { labels, key } of LABEL_TO_KEY) {
         const value = data[key];
         if (value == null) continue;
-
         for (const label of labels) {
-          if (lower.includes(label)) {
+          if (labelText.includes(label)) {
             fillInput(input, value);
-            // Highlight the field briefly so user sees it was filled
             input.style.outline = '2px solid #3a7bd5';
             input.style.backgroundColor = '#f0f7ff';
-            setTimeout(() => {
-              input.style.outline = '';
-              input.style.backgroundColor = '';
-            }, 3000);
+            setTimeout(() => { input.style.outline = ''; input.style.backgroundColor = ''; }, 3000);
             break;
           }
         }
       }
     }
-  }
-
-  function getInputLabel(input) {
-    // Try label[for]
-    if (input.id) {
-      const label = document.querySelector(`label[for="${input.id}"]`);
-      if (label) return label.textContent.trim();
-    }
-    // Try parent label
-    const parentLabel = input.closest('label');
-    if (parentLabel) return parentLabel.textContent.trim();
-    // Try aria-label
-    if (input.getAttribute('aria-label')) return input.getAttribute('aria-label');
-    // Try aria-describedby
-    const describedBy = input.getAttribute('aria-describedby');
-    if (describedBy) {
-      const desc = document.getElementById(describedBy);
-      if (desc) return desc.textContent.trim();
-    }
-    // Try previous sibling or parent's text
-    const parent = input.closest('div, fieldset, section');
-    if (parent) return parent.textContent.trim().substring(0, 200);
-    return null;
   }
 
   // Filing status radio
@@ -480,15 +489,15 @@ function autofillExtracted(data) {
     }
   }
 
-  // Yes/No radios
-  if (data.received_eic === true) {
+  // Yes/No radios for EIC
+  if (data.received_eic === true || data.received_eic === false) {
     setTimeout(() => {
-      const labels = document.querySelectorAll('div[class*="fsa-radio-button"], label');
-      for (const el of labels) {
+      const cards = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
+      for (const el of cards) {
         const text = el.textContent.trim().toLowerCase();
-        const parent = el.closest('fieldset, div, section');
+        const parent = el.closest('fsa-input, fieldset, div, section');
         const parentText = parent ? parent.textContent.toLowerCase() : '';
-        if (parentText.includes('earned income credit') && text === 'yes') {
+        if (parentText.includes('earned income credit') && text === (data.received_eic ? 'yes' : 'no')) {
           el.click();
           break;
         }
@@ -496,12 +505,13 @@ function autofillExtracted(data) {
     }, 1500);
   }
 
+  // Schedule A,B,D,E,F,H
   if (data.filed_schedule_a_b_d_e_f_h === true || data.filed_schedule_a_b_d_e_f_h === false) {
     setTimeout(() => {
-      const labels = document.querySelectorAll('div[class*="fsa-radio-button"], label');
-      for (const el of labels) {
+      const cards = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
+      for (const el of cards) {
         const text = el.textContent.trim().toLowerCase();
-        const parent = el.closest('fieldset, div, section');
+        const parent = el.closest('fsa-input, fieldset, div, section');
         const parentText = parent ? parent.textContent.toLowerCase() : '';
         if (parentText.includes('schedule a') && text === (data.filed_schedule_a_b_d_e_f_h ? 'yes' : 'no')) {
           el.click();
@@ -511,21 +521,21 @@ function autofillExtracted(data) {
     }, 1500);
   }
 
-  // Run with delay to let Angular render
-  setTimeout(findAndFillByLabel, 2000);
+  // Try ID-based fill first, then label-based as fallback
+  setTimeout(() => {
+    fillByIds();
+    fillByLabels();
+  }, 2000);
 
-  // Also show suggestions in the sidebar
+  // Show in sidebar
   showExtractedInSidebar(data);
 }
 
 function showExtractedInSidebar(data) {
   const sidebar = document.getElementById('fafsa-sidebar');
   if (!sidebar) return;
-
   const body = sidebar.querySelector('.fafsa-body');
   if (!body) return;
-
-  // Check if we already added the extracted section
   if (document.getElementById('fafsa-extracted-info')) return;
 
   const section = document.createElement('div');
