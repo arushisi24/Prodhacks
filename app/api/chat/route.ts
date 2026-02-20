@@ -54,16 +54,6 @@ function ensureSidCookie(req: NextRequest, res: NextResponse, sid: string) {
   }
 }
 
-function buildFieldContext(fields: CollectedFields): string {
-  const confirmed = Object.entries(fields)
-    .filter(([k, v]) => k !== "uploads" && v !== undefined)
-    .map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`)
-    .join("\n");
-  return [
-    "=== ALREADY COLLECTED — do NOT ask about these again ===",
-    confirmed || "  (none yet)",
-  ].join("\n");
-}
 
 function validateUpdates(raw: Partial<CollectedFields>): Partial<CollectedFields> {
   const v: Partial<CollectedFields> = {};
@@ -148,6 +138,29 @@ function nextMissingField(fields: CollectedFields): FieldName | null {
     if ((fields as any)[k] === undefined) return k;
   }
   return null;
+}
+
+function buildFieldContext(fields: CollectedFields): string {
+  const confirmed = Object.entries(fields)
+    .filter(([k, v]) => k !== "uploads" && v !== undefined)
+    .map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`)
+    .join("\n");
+
+  const needed = FIELD_ORDER
+    .filter((k) => {
+      if (PARENT_FIELDS.has(k) && fields.independent === true) return false;
+      if ((k === "has_checking" || k === "has_savings") && fields.bank_name === "none") return false;
+      return (fields as Record<string, unknown>)[k] === undefined;
+    })
+    .join(", ");
+
+  return [
+    "=== ALREADY COLLECTED — do NOT ask about these again ===",
+    confirmed || "  (none yet)",
+    "",
+    "=== STILL NEEDED — extract these from the user's replies ===",
+    needed || "(all done — set done: true)",
+  ].join("\n");
 }
 
 const SYSTEM_PROMPT = `You are a warm, casual assistant helping someone get ready to apply for financial aid (FAFSA).
