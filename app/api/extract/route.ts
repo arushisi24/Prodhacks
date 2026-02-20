@@ -4,20 +4,7 @@ import { redis } from "@/lib/redis";
 
 const openai = new OpenAI();
 
-export async function POST(req: NextRequest) {
-  const { blobUrl, fileType, sid } = await req.json();
-  if (!blobUrl || !sid) return NextResponse.json({ error: "Missing data" }, { status: 400 });
-
-  const fileRes = await fetch(blobUrl);
-  const buffer = await fileRes.arrayBuffer();
-  const base64 = Buffer.from(buffer).toString("base64");
-
-  const completion = await openai.chat.completions.create({
-    model: "gpt-4o",
-    messages: [
-      {
-        role: "system",
-        content: `You extract financial data from tax documents for FAFSA form completion. Return ONLY valid JSON with these exact fields (use null if not found). All dollar amounts should be integers (no cents, no commas, no dollar signs).
+const SYSTEM_PROMPT = `You extract financial data from tax documents for FAFSA form completion. Return ONLY valid JSON with these exact fields (use null if not found). All dollar amounts should be integers (no cents, no commas, no dollar signs).
 
 {
   "filing_status": "single" | "head_of_household" | "married_filing_jointly" | "married_filing_separately" | "qualifying_surviving_spouse" | null,
@@ -39,34 +26,64 @@ export async function POST(req: NextRequest) {
   "tax_year": number or null,
   "filer_name": string or null,
   "filer_ssn_last4": string or null
-}`
-      },
-      {
-        role: "user",
-        content: [
-          {
-            type: "image_url",
-            image_url: { url: `data:application/pdf;base64,${base64}` }
-          },
-          { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}.` }
-        ]
-      }
-    ],
-    max_tokens: 1000,
-  });
+}`;
 
-  let extracted: any = {};
+export async function POST(req: NextRequest) {
   try {
-    const raw = (completion.choices[0].message.content ?? "")
-      .replace(/```json|```/g, "").trim();
-    extracted = JSON.parse(raw);
-  } catch (e) {
-    return NextResponse.json({ error: "Failed to parse document" }, { status: 500 });
+    const { blobUrl, fileType, sid } = await req.json();
+    if (!blobUrl || !sid) return NextResponse.json({ error: "Missing data" }, { status: 400 });
+
+    const fileRes = await fetch(blobUrl);
+    const buffer = Buffer.from(await fileRes.arrayBuffer());
+    const base64 = buffer.toString("base64");
+
+    const isPdf = blobUrl.toLowerCase().includes(".pdf") || fileRes.headers.get("content-type")?.includes("pdf");
+
+    let userContent: any;
+
+    if (isPdf) {
+      userContent = [
+        {
+          type: "file",
+          file: {
+            filename: "document.pdf",
+            file_data: `data:application/pdf;base64,${base64}`
+          }
+        },
+        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}.` }
+      ];
+    } else {
+      const mime = blobUrl.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
+      userContent = [
+        { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}.` }
+      ];
+    }
+
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o",
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userContent }
+      ],
+      max_tokens: 1000,
+    });
+
+    let extracted: any = {};
+    try {
+      const raw = (completion.choices[0].message.content ?? "")
+        .replace(/```json|```/g, "").trim();
+      extracted = JSON.parse(raw);
+    } catch (e) {
+      return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
+    }
+
+    const existing: any = (await redis.get(`fafsa:extracted:${sid}`)) || {};
+    const merged = { ...existing, ...extracted };
+    await redis.set(`fafsa:extracted:${sid}`, merged, { ex: 60 * 60 * 24 * 30 });
+
+    return NextResponse.json({ extracted: merged });
+  } catch (e: any) {
+    return NextResponse.json({ error: e.message || "Unknown error" }, { status: 500 });
   }
-
-  const existing: any = (await redis.get(`fafsa:extracted:${sid}`)) || {};
-  const merged = { ...existing, ...extracted };
-  await redis.set(`fafsa:extracted:${sid}`, merged, { ex: 60 * 60 * 24 * 30 });
-
-  return NextResponse.json({ extracted: merged });
 }
