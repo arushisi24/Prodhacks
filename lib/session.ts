@@ -29,9 +29,9 @@ export interface SessionData {
   fields: CollectedFields;
 }
 
-// Independent students don't need parent_bank_name, so total is 13 for them
-const DEPENDENT_FIELDS = 14;
-const INDEPENDENT_FIELDS = 13;
+// user_role was added, so dependent = 15 fields, independent = 14 (no parent_bank_name)
+const DEPENDENT_FIELDS = 15;
+const INDEPENDENT_FIELDS = 14;
 
 export function computeProgress(fields: CollectedFields): number {
   const SKIP = fields.independent === true ? new Set(["parent_bank_name", "uploads"]) : new Set(["uploads"]);
