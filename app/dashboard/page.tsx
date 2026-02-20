@@ -51,7 +51,7 @@ export default function DashboardPage() {
             <span className="step-num">←</span>
             <span className="step-label">Back to chat</span>
           </Link>
-          <Link href="/checklist" className="step">
+          <Link href="/preparations" className="step">
             <span className="step-num">✓</span>
             <span className="step-label">Checklist</span>
           </Link>

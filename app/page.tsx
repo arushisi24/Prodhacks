@@ -87,7 +87,8 @@ export default function ChatPage() {
     try {
       const data = await postJSON("/api/chat", { message: msg });
       addMessage("assistant", data.reply as string);
-      setProgress((data.progress as number) ?? 0);
+      const prog = (data.progress as number) ?? 0;
+      setProgress(data.done ? 1 : prog);
       if (data.done) setTimeout(() => router.push("/preparations"), 2500);
     } catch (err) {
       addMessage(

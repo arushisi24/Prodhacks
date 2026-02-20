@@ -136,7 +136,7 @@ function UploadSlot({
 }: {
   doc: DocDef;
   uploaded: UploadInfo | null;
-  onUpload: (docId: string, info: UploadInfo) => void;
+  onUpload: (docId: string, info: UploadInfo) => Promise<void>;
   onRemove: (docId: string, info: UploadInfo) => Promise<void>;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
@@ -157,7 +157,7 @@ function UploadSlot({
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "Upload failed");
-      onUpload(doc.id, { name: file.name, url: json.url });
+      await onUpload(doc.id, { name: file.name, url: json.url });
     } catch (e) {
       setError("Upload failed — try again.");
     } finally {
@@ -303,6 +303,7 @@ export default function PreparationsPage() {
   }, []);
 
   async function handleRemove(docId: string, info: UploadInfo) {
+    // Delete from Vercel Blob
     const res = await fetch(`/api/upload?url=${encodeURIComponent(info.url)}`, {
       method: "DELETE",
     });
@@ -312,13 +313,23 @@ export default function PreparationsPage() {
       return;
     }
 
+    // Remove from session cookie
+    await fetch(`/api/uploads?docType=${encodeURIComponent(docId)}`, { method: "DELETE" });
+
     const next = { ...uploaded };
     delete next[docId];
     setUploaded(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }
 
-  function handleUpload(docId: string, info: UploadInfo) {
+  async function handleUpload(docId: string, info: UploadInfo) {
+    // Save to session cookie so /api/state reflects the upload
+    await fetch("/api/uploads", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ docType: docId, url: info.url }),
+    });
+
     const next = { ...uploaded, [docId]: info };
     setUploaded(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));

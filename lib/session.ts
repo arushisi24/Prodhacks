@@ -41,7 +41,7 @@ export function computeProgress(fields: CollectedFields): number {
 
 export function encodeSession(data: SessionData): string {
   const trimmed: SessionData = {
-    messages: data.messages.slice(-30),
+    messages: data.messages.slice(-15),
     fields: data.fields,
   };
   return Buffer.from(JSON.stringify(trimmed)).toString("base64url");
