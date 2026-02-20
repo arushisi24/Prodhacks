@@ -233,9 +233,6 @@ function init() {
 
   setTimeout(() => {
     injectSidebar(step);
-    if (step.scrollTo && step.selector) {
-      setTimeout(() => highlightElement(step.selector, step.textFallbacks || []), 800);
-    }
   }, 1000);
 }
 
