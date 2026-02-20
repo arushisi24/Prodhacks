@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import OpenAI from "openai";
+import OpenAI, { toFile } from "openai";
 import { redis } from "@/lib/redis";
 
 const SYSTEM_PROMPT = `You extract financial data from tax documents for FAFSA form completion. Return ONLY valid JSON with these exact fields (use null if not found). All dollar amounts should be integers (no cents, no commas, no dollar signs).
@@ -40,9 +40,19 @@ export async function POST(req: NextRequest) {
     let userContent: any;
 
     if (isPdf) {
-      const pdfParse = (await import("pdf-parse")).default;
-      const pdfData = await pdfParse(buffer);
-      userContent = `Here is the text extracted from a ${fileType || "tax document"}:\n\n${pdfData.text}\n\nExtract all FAFSA-relevant financial data as JSON.`;
+      // Upload PDF to OpenAI Files API, then reference it
+      const file = await openai.files.create({
+        file: await toFile(buffer, "tax_document.pdf"),
+        purpose: "assistants",
+      });
+
+      userContent = [
+        {
+          type: "file",
+          file: { file_id: file.id }
+        },
+        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
+      ];
     } else {
       const base64 = buffer.toString("base64");
       const mime = blobUrl.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
