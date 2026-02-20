@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 // Show current profile status when popup opens
 chrome.storage.local.get(['fafsaProfile'], ({ fafsaProfile }) => {
   const status = document.getElementById('sync-status');
@@ -14,22 +13,24 @@ document.getElementById('sync-btn').addEventListener('click', async () => {
   const status = document.getElementById('sync-status');
   status.textContent = 'Loading...';
 
-  try {
-    const res = await fetch('https://prodhacks3.vercel.app/api/get-profile', {
-      credentials: 'include'
-    });
-    const data = await res.json();
-
-    if (data.fields) {
-      chrome.storage.local.set({ fafsaProfile: data.fields });
-      status.textContent = `✅ Profile loaded — ${data.fields.student_name ?? 'student'}`;
-    } else {
-      status.textContent = '❌ No profile found. Complete the chat first.';
+  chrome.cookies.get({ url: 'https://prodhacks3.vercel.app', name: 'fafsa_sid' }, async (cookie) => {
+    if (!cookie) {
+      status.textContent = '❌ Complete the chat at prodhacks3.vercel.app first.';
+      return;
     }
-  } catch (err) {
-    status.textContent = '❌ Error connecting to website.';
-  }
+
+    try {
+      const res = await fetch(`https://prodhacks3.vercel.app/api/get-profile?sid=${cookie.value}`);
+      const data = await res.json();
+
+      if (data.fields) {
+        chrome.storage.local.set({ fafsaProfile: data.fields });
+        status.textContent = `✅ Profile loaded — ${data.fields.student_name ?? 'student'}`;
+      } else {
+        status.textContent = '❌ No profile found. Complete the chat first.';
+      }
+    } catch (err) {
+      status.textContent = '❌ Error connecting to website.';
+    }
+  });
 });
-=======
-console.log('FAFSA Navigator: popup loaded');
->>>>>>> 99a48be67d4730fd378007dabc0326afcf5188f2

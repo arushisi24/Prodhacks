@@ -2,30 +2,70 @@
 
 #fafsa-sidebar {
   position: fixed;
-  top: 80px;
-  right: 20px;
+  top: 0;
+  right: 0;
   width: 300px;
+  height: 100vh;
   background: rgba(255, 255, 255, 0.75);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.15);
   z-index: 999998;
   font-family: "Segoe UI", Arial, sans-serif;
   overflow: hidden;
-  border: 1.5px solid rgba(224, 231, 239, 0.8);
-  animation: fafsa-slidein 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  border-left: 1.5px solid rgba(224, 231, 239, 0.8);
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-@keyframes fafsa-slidein {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+#fafsa-sidebar.collapsed {
+  transform: translateX(300px);
+}
+
+body.fafsa-open {
+  margin-right: 300px !important;
+  transition: margin-right 0.3s ease;
+}
+
+body.fafsa-collapsed {
+  margin-right: 0 !important;
+  transition: margin-right 0.3s ease;
+}
+
+/* ─── Expand Tab ──────────────────────────────────────────────────── */
+
+#fafsa-expand-tab {
+  position: fixed;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 24px;
+  height: 56px;
+  background: #1a4480;
+  color: white;
+  border: none;
+  border-radius: 8px 0 0 8px;
+  cursor: pointer;
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: -2px 0 12px rgba(0, 0, 0, 0.2);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease, width 0.2s, background 0.2s;
+}
+
+#fafsa-expand-tab.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+#fafsa-expand-tab:hover {
+  width: 32px;
+  background: #2355a0;
 }
 
 /* ─── Header ──────────────────────────────────────────────────────── */
@@ -37,12 +77,9 @@
   background: #1a4480;
   color: white;
   padding: 14px 16px;
-  cursor: grab;
+  cursor: default;
   user-select: none;
-}
-
-.fafsa-header:active {
-  cursor: grabbing;
+  flex-shrink: 0;
 }
 
 .fafsa-header img {
@@ -60,19 +97,25 @@
   pointer-events: none;
 }
 
-#fafsa-close {
-  background: none;
+#fafsa-toggle {
+  background: rgba(255, 255, 255, 0.15);
   border: none;
-  color: rgba(255, 255, 255, 0.75);
-  font-size: 16px;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 4px;
-  transition: color 0.2s;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.2s;
+  flex-shrink: 0;
 }
 
-#fafsa-close:hover {
-  color: white;
+#fafsa-toggle:hover {
+  background: rgba(255, 255, 255, 0.28);
+  transform: scale(1.1);
 }
 
 /* ─── Progress Bar ────────────────────────────────────────────────── */
@@ -81,6 +124,7 @@
   background: rgba(240, 244, 248, 0.85);
   padding: 10px 16px 8px;
   border-bottom: 1px solid rgba(224, 231, 239, 0.6);
+  flex-shrink: 0;
 }
 
 .fafsa-progress-label {
@@ -111,6 +155,8 @@
 
 .fafsa-body {
   padding: 16px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .fafsa-body h2 {
@@ -154,7 +200,9 @@
 /* ─── Footer / Button ─────────────────────────────────────────────── */
 
 .fafsa-footer {
-  padding: 0 16px 16px;
+  padding: 16px;
+  border-top: 1px solid rgba(224, 231, 239, 0.6);
+  flex-shrink: 0;
 }
 
 #fafsa-highlight-btn {
@@ -195,11 +243,6 @@
 }
 
 @keyframes fafsa-bounce {
-  from {
-    transform: translateX(0px);
-  }
-  to {
-    transform: translateX(-8px);
-  }
+  from { transform: translateX(0px); }
+  to { transform: translateX(-8px); }
 }
-

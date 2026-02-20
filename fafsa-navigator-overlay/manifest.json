@@ -2,17 +2,12 @@
   "manifest_version": 3,
   "name": "FAFSA Buddy",
   "version": "0.1.0",
-  "description": "Your personal assistant for navigating the FAFSA application process.",
-  "permissions": ["storage", "scripting", "activeTab", "cookies"],
+  "description": "Your personal FAFSA assistant",
+  "permissions": ["storage", "scripting", "activeTab", "cookies", "tabs"],
   "host_permissions": [
     "https://studentaid.gov/*",
     "https://prodhacks3.vercel.app/*"
   ],
-  "name": "FAFSA Navigator Overlay",
-  "version": "0.1.0",
-  "description": "Overlay sidebar for studentaid.gov",
-  "permissions": ["storage", "scripting", "activeTab"],
-  "host_permissions": ["https://studentaid.gov/*"],
   "background": {
     "service_worker": "background.js",
     "type": "module"
@@ -40,4 +35,3 @@
     }
   ]
 }
-

@@ -1,1 +1,90 @@
-body { min-width: 200px; font-family: sans-serif; padding: 12px; }
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  width: 280px;
+  font-family: "Segoe UI", Arial, sans-serif;
+  background: #f4f7fb;
+  color: #1a2a3a;
+}
+
+#header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #1a4480;
+  color: white;
+  padding: 14px 16px;
+}
+
+#header img {
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+}
+
+#header-title {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+
+#header-sub {
+  font-size: 11px;
+  opacity: 0.75;
+  margin-top: 1px;
+}
+
+#body {
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+#status-card {
+  background: white;
+  border: 1px solid #dde4ee;
+  border-radius: 10px;
+  padding: 12px 14px;
+  font-size: 13px;
+  color: #3a5a7a;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+
+#sync-btn {
+  width: 100%;
+  background: #1a4480;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 11px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: background 0.2s;
+}
+
+#sync-btn:hover {
+  background: #2355a0;
+}
+
+#btn-icon {
+  font-size: 16px;
+}
+
+#footer-note {
+  font-size: 11px;
+  color: #8a9ab0;
+  text-align: center;
+  line-height: 1.5;
+}

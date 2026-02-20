@@ -71,7 +71,6 @@ function getCurrentStep() {
   return null;
 }
 
-// Find element by CSS selector OR by matching visible text content
 function findElement(selector, textFallbacks = []) {
   let el = document.querySelector(selector);
   if (el) return el;
@@ -130,6 +129,11 @@ function injectSidebar(stepData) {
   const existing = document.getElementById("fafsa-sidebar");
   if (existing) existing.remove();
 
+  const existingTab = document.getElementById("fafsa-expand-tab");
+  if (existingTab) existingTab.remove();
+
+  document.body.classList.remove("fafsa-open", "fafsa-collapsed");
+
   const sidebar = document.createElement("div");
   sidebar.id = "fafsa-sidebar";
 
@@ -139,7 +143,7 @@ function injectSidebar(stepData) {
     '<div class="fafsa-header">' +
       '<img src="' + chrome.runtime.getURL("icons/icon48.png") + '" alt="FAFSA Buddy" />' +
       "<span>FAFSA Buddy</span>" +
-      '<button id="fafsa-close">\u2715</button>' +
+      '<button id="fafsa-toggle">&#8250;</button>' +
     "</div>" +
     '<div class="fafsa-progress">' +
       '<div class="fafsa-progress-label">Step ' + stepData.step + " of " + stepData.total + "</div>" +
@@ -157,52 +161,28 @@ function injectSidebar(stepData) {
     "</div>";
 
   document.body.appendChild(sidebar);
+  document.body.classList.add("fafsa-open");
 
-  // ── Drag to move ──────────────────────────────────────────────────
-  const header = sidebar.querySelector(".fafsa-header");
-  let isDragging = false;
-  let dragOffsetX = 0;
-  let dragOffsetY = 0;
+  // ── Expand tab ────────────────────────────────────────────────────
+  const expandTab = document.createElement("button");
+  expandTab.id = "fafsa-expand-tab";
+  expandTab.innerHTML = "&#8249;";
+  document.body.appendChild(expandTab);
 
-  header.addEventListener("mousedown", (e) => {
-    if (e.target.id === "fafsa-close") return;
-    e.preventDefault();
+  // ── Toggle collapse ───────────────────────────────────────────────
+  document.getElementById("fafsa-toggle").addEventListener("click", (e) => {
     e.stopPropagation();
+    sidebar.classList.add("collapsed");
+    document.body.classList.remove("fafsa-open");
+    document.body.classList.add("fafsa-collapsed");
+    expandTab.classList.add("visible");
+  });
 
-    const rect = sidebar.getBoundingClientRect();
-    sidebar.style.right = "auto";
-    sidebar.style.left = rect.left + "px";
-    sidebar.style.top  = rect.top  + "px";
-
-    dragOffsetX = e.clientX - rect.left;
-    dragOffsetY = e.clientY - rect.top;
-
-    isDragging = true;
-    sidebar.style.transition = "none";
-    document.body.style.userSelect = "none";
-    document.body.style.pointerEvents = "none";
-    sidebar.style.pointerEvents = "auto";
-  }, true);
-
-  window.addEventListener("mousemove", (e) => {
-    if (!isDragging) return;
-    e.preventDefault();
-    sidebar.style.left = (e.clientX - dragOffsetX) + "px";
-    sidebar.style.top  = (e.clientY - dragOffsetY) + "px";
-  }, true);
-
-  window.addEventListener("mouseup", () => {
-    if (!isDragging) return;
-    isDragging = false;
-    document.body.style.userSelect = "";
-    document.body.style.pointerEvents = "";
-  }, true);
-  // ─────────────────────────────────────────────────────────────────
-
-  document.getElementById("fafsa-close").addEventListener("click", () => {
-    sidebar.remove();
-    const arrow = document.getElementById("fafsa-arrow");
-    if (arrow) arrow.remove();
+  expandTab.addEventListener("click", () => {
+    sidebar.classList.remove("collapsed");
+    document.body.classList.remove("fafsa-collapsed");
+    document.body.classList.add("fafsa-open");
+    expandTab.classList.remove("visible");
   });
 
   const highlightBtn = document.getElementById("fafsa-highlight-btn");
@@ -239,7 +219,8 @@ new MutationObserver(() => {
   }
 }).observe(document, { subtree: true, childList: true });
 
-// Fetch profile from your website and autofill FAFSA fields
+// ─── Autofill ─────────────────────────────────────────────────────────────────
+
 async function loadAndAutofill() {
   chrome.storage.local.get(['fafsaProfile'], ({ fafsaProfile }) => {
     if (!fafsaProfile) return;
@@ -260,7 +241,6 @@ function autofill(fields) {
     const el = document.querySelector(selector);
     if (!el) continue;
 
-    // Trigger React synthetic events so FAFSA form registers the value
     const nativeSetter = Object.getOwnPropertyDescriptor(
       window.HTMLInputElement.prototype, 'value'
     ).set;
@@ -271,4 +251,3 @@ function autofill(fields) {
 }
 
 loadAndAutofill();
-

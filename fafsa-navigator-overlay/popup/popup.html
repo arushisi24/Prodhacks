@@ -6,13 +6,28 @@
 </head>
 <body>
   <div id="header">
-    <img src="../icons/icon48.png" width="32" height="32" style="border-radius:6px;">
-    <h1>FAFSA Buddy</h1>
+    <img src="../icons/icon48.png" alt="FAFSA Buddy" />
+    <div id="header-text">
+      <div id="header-title">FAFSA Buddy</div>
+      <div id="header-sub">Your personal FAFSA assistant</div>
+    </div>
   </div>
-  <div style="padding:16px;">
-    <button id="sync-btn">Load My Profile</button>
-    <div id="sync-status" style="margin-top:10px;font-size:13px;"></div>
+
+  <div id="body">
+    <div id="status-card">
+      <div id="sync-status">Checking profile...</div>
+    </div>
+
+    <button id="sync-btn">
+      <span id="btn-icon">⟳</span>
+      Load My Profile
+    </button>
+
+    <div id="footer-note">
+      Complete the chat at <strong>prodhacks3.vercel.app</strong> first
+    </div>
   </div>
+
   <script src="popup.js"></script>
 </body>
 </html>
