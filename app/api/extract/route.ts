@@ -41,11 +41,13 @@ export async function POST(req: NextRequest) {
     let userContent: any;
 
     if (isPdf) {
-      // Use image_url with PDF mime type — GPT-4o supports this
       userContent = [
         {
-          type: "image_url",
-          image_url: { url: `data:application/pdf;base64,${base64}` }
+          type: "file",
+          file: {
+            filename: "tax_document.pdf",
+            file_data: `data:application/pdf;base64,${base64}`
+          }
         },
         { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
       ];
@@ -73,7 +75,6 @@ export async function POST(req: NextRequest) {
       const cleaned = rawResponse.replace(/```json|```/g, "").trim();
       extracted = JSON.parse(cleaned);
     } catch (e) {
-      // Return the raw response so we can see what GPT said
       return NextResponse.json({ error: "Failed to parse", raw: rawResponse }, { status: 500 });
     }
 
