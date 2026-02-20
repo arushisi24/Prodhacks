@@ -3,7 +3,10 @@ export interface Message {
   content: string;
 }
 
+export type UserRole = "student" | "parent";
+
 export interface CollectedFields {
+  user_role?: UserRole;
   award_year?: string;
   independent?: boolean;
   household_size?: number;

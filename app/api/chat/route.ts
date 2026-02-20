@@ -12,6 +12,22 @@ const SYSTEM_PROMPT = `You are a warm, casual assistant helping a college studen
 
 IMPORTANT: Never mention "fields", "data collection", "checklist", or that you're tracking anything. Just talk naturally like a helpful friend.
 
+NEW CRITICAL STEP (do this first):
+- Before asking about anything else, you MUST determine whether the user is a "student" or a "parent/guardian".
+- If user_role is not yet confirmed, your next reply must ask ONLY:
+  "Are you the student applying, or a parent/guardian helping a student?"
+- Once confirmed, set updates.user_role to "student" or "parent".
+
+If user_role = "parent":
+- ALWAYS remind them (briefly) to answer using the STUDENT’s information (not the parent’s) when you ask student-specific questions.
+- Example reminder style: "Just a heads up — answer for your student, not you"
+- Rephrase every student-facing question to refer to "your student" (e.g., "Is your student applying for 2026–27?").
+
+If user_role = "student":
+- Use "you/your" normally.
+
+When user_role="parent", interpret "STUDENT" as "your student" and ask the question accordingly.
+
 Your hidden goal is to collect ALL of these details through conversation:
 1. award_year — which school year they're applying for (e.g. 2026-27)
 2. independent — are they independent for financial aid purposes? (true/false)
@@ -54,9 +70,11 @@ You MUST respond with valid JSON only. No text outside the JSON object. Format:
 The "updates" object should only include fields you confirmed in THIS message (not previously collected ones).
 Set "done": true only when you have confirmed ALL 14 fields.`;
 
-const WELCOME = "Hi, I'm FAFSA Buddy 👋 I'm here to make FAFSA feel a lot less stressful.\n\nI can help you apply step-by-step, figure out what you qualify for, and make a checklist of what you need. First, what school year are you applying for?";
+const WELCOME =
+  "Hi, I'm FAFSA Buddy 👋 I’m here to make FAFSA feel a lot less stressful.\n\nQuick thing first — are you the student applying, or a parent/guardian helping a student?";
 
 const FIELD_HINTS: Record<string, string> = {
+  user_role: 'one of: "student" | "parent"',
   award_year: 'school year, e.g. "2025-26"',
   independent: "true or false",
   household_size: "a number",
@@ -75,11 +93,22 @@ const FIELD_HINTS: Record<string, string> = {
 
 function buildFieldContext(fields: CollectedFields): string {
   const ALL_FIELDS = [
-    "award_year", "independent", "household_size", "income_range",
-    "asset_range", "bank_name", "has_checking", "has_savings",
-    "has_w2", "filed_taxes", "has_tax_return", "schools",
-    "enrollment", "parent_bank_name",
-  ];
+    "user_role",
+    "award_year",
+    "independent",
+    "household_size",
+    "income_range",
+    "asset_range",
+    "bank_name",
+    "has_checking",
+    "has_savings",
+    "has_w2",
+    "filed_taxes",
+    "has_tax_return",
+    "schools",
+    "enrollment",
+    "parent_bank_name",
+  ] as const;
 
   const confirmed = Object.entries(fields)
     .filter(([, v]) => v !== undefined)
@@ -88,13 +117,16 @@ function buildFieldContext(fields: CollectedFields): string {
 
   const needed = ALL_FIELDS
     .filter((k) => {
+      // don’t ask parent_bank_name if independent
       if (k === "parent_bank_name" && fields.independent === true) return false;
-      return fields[k as keyof CollectedFields] === undefined;
+      return (fields as any)[k] === undefined;
     })
     .map((k) => `  - ${k} (${FIELD_HINTS[k] ?? ""})`)
     .join("\n");
 
   return [
+    "NOTE: If user_role is not set, ask whether they are a student or parent FIRST.",
+    "",
     "=== COLLECTED FIELDS (DO NOT ask about these again) ===",
     confirmed || "  (none yet)",
     "",
@@ -146,6 +178,8 @@ export async function POST(req: NextRequest) {
   }
 
   session.messages.push({ role: "user", content: message });
+
+  const roleUnknown = session.fields.user_role === undefined;
 
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
