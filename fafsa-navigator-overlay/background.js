@@ -12,6 +12,10 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
           chrome.storage.local.set({ fafsaProfile: data.fields });
           console.log('FAFSA Buddy: profile loaded for', data.fields.student_name);
         }
+        if (data.extracted) {
+          chrome.storage.local.set({ fafsaExtracted: data.extracted });
+          console.log('FAFSA Buddy: extracted data loaded');
+        }
       } catch (err) {
         console.log('FAFSA Buddy: could not load profile', err);
       }

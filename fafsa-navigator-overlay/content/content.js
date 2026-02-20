@@ -360,3 +360,70 @@ function autofill(fields) {
 }
 
 loadAndAutofill();
+
+// ─── Extracted Financial Data Autofill ────────────────────────────────────────
+
+function loadAndAutofillExtracted() {
+  chrome.storage.local.get(['fafsaExtracted'], ({ fafsaExtracted }) => {
+    if (!fafsaExtracted) return;
+    autofillExtracted(fafsaExtracted);
+  });
+}
+
+function autofillExtracted(data) {
+  const url = window.location.href;
+
+  function fillInput(el, value) {
+    if (!el || !value) return;
+    const nativeSetter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype, 'value'
+    ).set;
+    nativeSetter.call(el, String(value));
+    el.dispatchEvent(new Event('input', { bubbles: true }));
+    el.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  // Only run on finance-related pages
+  if (url.includes('finances') || url.includes('financial') || url.includes('tax')) {
+    setTimeout(() => {
+      // Map extracted fields to possible input selectors
+      const financeMap = [
+        { keys: ['adjusted_gross_income'], selectors: ['input[id*="agi"], input[id*="gross"], input[aria-label*="adjusted gross"], input[aria-label*="AGI"]'] },
+        { keys: ['income_tax_paid'], selectors: ['input[id*="tax-paid"], input[id*="incomeTax"], input[aria-label*="income tax paid"], input[aria-label*="tax paid"]'] },
+        { keys: ['wages_salary'], selectors: ['input[id*="wage"], input[id*="salary"], input[id*="earning"], input[aria-label*="wage"], input[aria-label*="earning"]'] },
+        { keys: ['interest_income'], selectors: ['input[id*="interest"], input[aria-label*="interest income"]'] },
+        { keys: ['untaxed_ira_distributions'], selectors: ['input[id*="ira"], input[aria-label*="IRA"], input[aria-label*="untaxed"]'] },
+        { keys: ['tax_exempt_interest'], selectors: ['input[id*="exempt"], input[aria-label*="tax-exempt"], input[aria-label*="tax exempt"]'] },
+        { keys: ['education_credits'], selectors: ['input[id*="education"], input[aria-label*="education credit"]'] },
+      ];
+
+      for (const { keys, selectors } of financeMap) {
+        for (const key of keys) {
+          const value = data[key];
+          if (value == null) continue;
+
+          for (const selectorGroup of selectors) {
+            const el = document.querySelector(selectorGroup);
+            if (el) {
+              fillInput(el, value);
+              break;
+            }
+          }
+        }
+      }
+
+      // Filing status — click matching radio
+      if (data.filing_status) {
+        const radioDivs = document.querySelectorAll('div[class*="fsa-radio-button"], label');
+        for (const el of radioDivs) {
+          if (el.textContent.trim().toLowerCase().includes(data.filing_status.toLowerCase())) {
+            el.click();
+            break;
+          }
+        }
+      }
+    }, 1500);
+  }
+}
+
+loadAndAutofillExtracted();

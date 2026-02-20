@@ -13,6 +13,8 @@ function setCookie(res: NextResponse, data: SessionData) {
 // POST { docType, url } — save upload URL to session
 export async function POST(req: NextRequest) {
   const session = decodeSession(req.cookies.get("session")?.value);
+  const sid = req.cookies.get("fafsa_sid")?.value;
+
   let docType: string, url: string;
   try {
     ({ docType, url } = await req.json());
@@ -23,6 +25,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "docType and url required" }, { status: 400 });
   if (!session.fields.uploads) session.fields.uploads = {};
   session.fields.uploads[docType] = { url, uploadedAt: new Date().toISOString() };
+
+  // Trigger AI extraction from uploaded document
+  if (sid) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_URL || "https://prodhacks3.vercel.app";
+      await fetch(`${baseUrl}/api/extract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blobUrl: url, fileType: docType, sid }),
+      });
+    } catch (e) {
+      console.error("Extraction failed:", e);
+    }
+  }
+
   const res = NextResponse.json({ ok: true });
   setCookie(res, session);
   return res;

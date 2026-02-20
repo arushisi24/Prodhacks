@@ -6,7 +6,9 @@ export async function GET(req: NextRequest) {
   if (!sid) return NextResponse.json({ error: "No session" }, { status: 404 });
 
   const fields = await redis.get(`fafsa:fields:${sid}`);
-  if (!fields) return NextResponse.json({ error: "No data" }, { status: 404 });
+  const extracted = await redis.get(`fafsa:extracted:${sid}`);
 
-  return NextResponse.json({ fields });
+  if (!fields && !extracted) return NextResponse.json({ error: "No data" }, { status: 404 });
+
+  return NextResponse.json({ fields: fields || {}, extracted: extracted || {} });
 }
