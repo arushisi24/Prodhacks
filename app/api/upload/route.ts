@@ -11,6 +11,7 @@ function getOrCreateUid(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const uid = getOrCreateUid(req);
+  const sid = req.cookies.get("fafsa_sid")?.value;
   const form = await req.formData();
   const file = form.get("file") as File | null;
   const docType = (form.get("docType") as string) || "doc";
@@ -26,16 +27,29 @@ export async function POST(req: NextRequest) {
   }
 
   const key = `fafsa/users/${uid}/${docType}-${Date.now()}-${file.name}`;
-
   const blob = await put(key, file, { access: "public" });
+
+  // Trigger AI extraction from uploaded document
+  if (sid) {
+    try {
+      const baseUrl = process.env.NEXT_PUBLIC_URL || "https://prodhacks3.vercel.app";
+      await fetch(`${baseUrl}/api/extract`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ blobUrl: blob.url, fileType: docType, sid }),
+      });
+    } catch (e) {
+      console.error("Extraction failed:", e);
+    }
+  }
+
   const res = NextResponse.json({ url: blob.url });
-  // persist uid cookie so uploads keep going into same “folder”
   if (!req.cookies.get(UID_COOKIE)?.value) {
     res.cookies.set(UID_COOKIE, uid, {
       httpOnly: true,
       sameSite: "lax",
       path: "/",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
+      maxAge: 60 * 60 * 24 * 30,
     });
   }
   return res;
