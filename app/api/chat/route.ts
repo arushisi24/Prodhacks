@@ -54,6 +54,56 @@ function ensureSidCookie(req: NextRequest, res: NextResponse, sid: string) {
   }
 }
 
+function buildFieldContext(fields: CollectedFields): string {
+  const confirmed = Object.entries(fields)
+    .filter(([k, v]) => k !== "uploads" && v !== undefined)
+    .map(([k, v]) => `  ${k}: ${JSON.stringify(v)}`)
+    .join("\n");
+  return [
+    "=== ALREADY COLLECTED — do NOT ask about these again ===",
+    confirmed || "  (none yet)",
+  ].join("\n");
+}
+
+function validateUpdates(raw: Partial<CollectedFields>): Partial<CollectedFields> {
+  const v: Partial<CollectedFields> = {};
+
+  if (raw.user_role === "student" || raw.user_role === "parent") v.user_role = raw.user_role;
+  if (typeof raw.student_name === "string" && raw.student_name.trim().length > 1) v.student_name = raw.student_name.trim();
+  if (typeof raw.student_email === "string" && raw.student_email.includes("@")) v.student_email = raw.student_email.trim();
+  if (typeof raw.student_dob === "string" && /^\d{4}-\d{2}-\d{2}$/.test(raw.student_dob)) v.student_dob = raw.student_dob;
+  if (typeof raw.independent === "boolean") v.independent = raw.independent;
+  if (typeof raw.household_size === "number" && raw.household_size >= 1 && Number.isInteger(raw.household_size)) v.household_size = raw.household_size;
+
+  const INCOME = ["under_20k","20_40k","40_60k","60_80k","80_100k","100_150k","150_200k","over_200k"];
+  if (raw.income_range && INCOME.includes(raw.income_range)) v.income_range = raw.income_range;
+
+  const ASSETS = ["under_1k","1_5k","5_20k","20_50k","50_100k","over_100k"];
+  if (raw.asset_range && ASSETS.includes(raw.asset_range)) v.asset_range = raw.asset_range;
+
+  if (typeof raw.has_w2 === "boolean") v.has_w2 = raw.has_w2;
+  if (typeof raw.bank_name === "string" && raw.bank_name.trim().length > 0)
+    v.bank_name = raw.bank_name.trim().toLowerCase() === "none" ? "none" : raw.bank_name.trim();
+  if (typeof raw.has_checking === "boolean") v.has_checking = raw.has_checking;
+  if (typeof raw.has_savings === "boolean") v.has_savings = raw.has_savings;
+  if (typeof raw.filed_taxes === "boolean") v.filed_taxes = raw.filed_taxes;
+  if (typeof raw.has_tax_return === "boolean") v.has_tax_return = raw.has_tax_return;
+  if (Array.isArray(raw.schools) && raw.schools.length > 0)
+    v.schools = raw.schools.filter((s): s is string => typeof s === "string" && s.trim().length > 0);
+
+  const ENROLLMENT = ["full_time","half_time","less_than_half"];
+  if (raw.enrollment && ENROLLMENT.includes(raw.enrollment)) v.enrollment = raw.enrollment;
+
+  // Parent financials (dependent students only)
+  if (raw.parent_income_range && INCOME.includes(raw.parent_income_range)) v.parent_income_range = raw.parent_income_range;
+  if (raw.parent_asset_range && ASSETS.includes(raw.parent_asset_range)) v.parent_asset_range = raw.parent_asset_range;
+  if (typeof raw.parent_filed_taxes === "boolean") v.parent_filed_taxes = raw.parent_filed_taxes;
+  if (typeof raw.parent_has_tax_return === "boolean") v.parent_has_tax_return = raw.parent_has_tax_return;
+  if (typeof raw.parent_bank_name === "string" && raw.parent_bank_name.trim().length > 0) v.parent_bank_name = raw.parent_bank_name.trim();
+
+  return v;
+}
+
 /**
  * STRICT ORDER: server decides the next missing field.
  */
@@ -64,6 +114,7 @@ const FIELD_ORDER = [
   "student_dob",
   "independent",
   "household_size",
+  // Student financials
   "income_range",
   "asset_range",
   "has_w2",
@@ -74,17 +125,24 @@ const FIELD_ORDER = [
   "has_tax_return",
   "schools",
   "enrollment",
+  // Parent financials (dependent students only)
+  "parent_income_range",
+  "parent_asset_range",
+  "parent_filed_taxes",
+  "parent_has_tax_return",
   "parent_bank_name",
 ] as const;
 
 type FieldName = (typeof FIELD_ORDER)[number];
 
+const PARENT_FIELDS = new Set(["parent_income_range", "parent_asset_range", "parent_filed_taxes", "parent_has_tax_return", "parent_bank_name"]);
+
 function nextMissingField(fields: CollectedFields): FieldName | null {
   for (const k of FIELD_ORDER) {
-    // don’t ask parent_bank_name if independent
-    if (k === "parent_bank_name" && fields.independent === true) continue;
+    // skip all parent fields for independent students
+    if (PARENT_FIELDS.has(k) && fields.independent === true) continue;
 
-    // if user said no bank, skip checking/savings
+    // if student has no bank, skip checking/savings
     if ((k === "has_checking" || k === "has_savings") && fields.bank_name === "none") continue;
 
     if ((fields as any)[k] === undefined) return k;
@@ -130,6 +188,10 @@ FIELD GUIDE — when you receive NEXT_FIELD=<name>, here is exactly what to ask 
 - has_tax_return: Ask if the student has a copy of their tax return or can access it on IRS.gov. Set updates.has_tax_return to true or false.
 - schools: Ask which colleges or universities the student is applying to or considering. Set updates.schools to an array of school name strings.
 - enrollment: Ask whether the student plans to attend full-time, half-time, or less than half-time. Set updates.enrollment to one of: full_time, half_time, less_than_half.
+- parent_income_range: Ask about the parents’ total household income last year. Same ranges as student: under $20k, $20–40k, $40–60k, $60–80k, $80–100k, $100–150k, $150–200k, over $200k. Set updates.parent_income_range to one of: under_20k, 20_40k, 40_60k, 60_80k, 80_100k, 100_150k, 150_200k, over_200k.
+- parent_asset_range: Ask about the parents’ total savings and assets (checking + savings + investments — not home value or retirement). Offer ranges: under $1k, $1–5k, $5–20k, $20–50k, $50–100k, over $100k. Set updates.parent_asset_range to one of: under_1k, 1_5k, 5_20k, 20_50k, 50_100k, over_100k.
+- parent_filed_taxes: Ask if the student’s parents filed a federal tax return last year. Set updates.parent_filed_taxes to true or false.
+- parent_has_tax_return: Ask if the parents have a copy of their tax return or can access it on IRS.gov. Set updates.parent_has_tax_return to true or false.
 - parent_bank_name: Ask which bank the student’s parents (or guardians) use for their primary account. Set updates.parent_bank_name to the bank name string.
 
 You MUST respond with valid JSON only. No text outside the JSON object.
@@ -221,6 +283,9 @@ export async function POST(req: NextRequest) {
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
 
+        // Explicit list of already-collected fields so AI never re-asks
+        { role: "system", content: buildFieldContext(session.fields) },
+
         // HARD GATE — forces order
         { role: "system", content: hardGateMsg },
 
@@ -232,7 +297,7 @@ export async function POST(req: NextRequest) {
     const parsed = JSON.parse(raw);
 
     reply = parsed.reply ?? reply;
-    updates = parsed.updates ?? {};
+    updates = validateUpdates(parsed.updates ?? {});
     done = parsed.done === true;
   } catch (err) {
     console.error("[FAFSA Buddy] OpenAI error:", err);

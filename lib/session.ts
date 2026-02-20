@@ -22,6 +22,10 @@ export interface CollectedFields {
   has_tax_return?: boolean;
   schools?: string[];
   enrollment?: string;
+  parent_income_range?: string;
+  parent_asset_range?: string;
+  parent_filed_taxes?: boolean;
+  parent_has_tax_return?: boolean;
   parent_bank_name?: string;
   uploads?: Record<string, { url: string; uploadedAt: string }>;
 }
@@ -31,12 +35,16 @@ export interface SessionData {
   fields: CollectedFields;
 }
 
-// 17 fields for dependent students (all fields), 16 for independent (no parent_bank_name)
-const DEPENDENT_FIELDS = 17;
+const PARENT_ONLY_FIELDS = ["parent_income_range", "parent_asset_range", "parent_filed_taxes", "parent_has_tax_return", "parent_bank_name"];
+
+// 21 fields for dependent (all fields), 16 for independent (no parent fields)
+const DEPENDENT_FIELDS = 21;
 const INDEPENDENT_FIELDS = 16;
 
 export function computeProgress(fields: CollectedFields): number {
-  const SKIP = fields.independent === true ? new Set(["parent_bank_name", "uploads"]) : new Set(["uploads"]);
+  const SKIP = fields.independent === true
+    ? new Set([...PARENT_ONLY_FIELDS, "uploads"])
+    : new Set(["uploads"]);
   const total = fields.independent === true ? INDEPENDENT_FIELDS : DEPENDENT_FIELDS;
   const count = Object.keys(fields).filter(
     (k) => !SKIP.has(k) && fields[k as keyof CollectedFields] !== undefined
