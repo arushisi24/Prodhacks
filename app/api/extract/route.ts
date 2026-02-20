@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import OpenAI from "openai";
 import { redis } from "@/lib/redis";
 
-const openai = new OpenAI();
-
 const SYSTEM_PROMPT = `You extract financial data from tax documents for FAFSA form completion. Return ONLY valid JSON with these exact fields (use null if not found). All dollar amounts should be integers (no cents, no commas, no dollar signs).
 
 {
@@ -31,6 +29,7 @@ const SYSTEM_PROMPT = `You extract financial data from tax documents for FAFSA f
 export async function POST(req: NextRequest) {
   try {
     const { blobUrl, fileType, sid } = await req.json();
+    const openai = new OpenAI();
     if (!blobUrl || !sid) return NextResponse.json({ error: "Missing data" }, { status: 400 });
 
     const fileRes = await fetch(blobUrl);
@@ -42,21 +41,19 @@ export async function POST(req: NextRequest) {
     let userContent: any;
 
     if (isPdf) {
+      // Use image_url with PDF mime type — GPT-4o supports this
       userContent = [
         {
-          type: "file",
-          file: {
-            filename: "document.pdf",
-            file_data: `data:application/pdf;base64,${base64}`
-          }
+          type: "image_url",
+          image_url: { url: `data:application/pdf;base64,${base64}` }
         },
-        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}.` }
+        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
       ];
     } else {
       const mime = blobUrl.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
       userContent = [
         { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}.` }
+        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
       ];
     }
 
@@ -69,13 +66,15 @@ export async function POST(req: NextRequest) {
       max_tokens: 1000,
     });
 
+    const rawResponse = completion.choices[0].message.content ?? "";
+
     let extracted: any = {};
     try {
-      const raw = (completion.choices[0].message.content ?? "")
-        .replace(/```json|```/g, "").trim();
-      extracted = JSON.parse(raw);
+      const cleaned = rawResponse.replace(/```json|```/g, "").trim();
+      extracted = JSON.parse(cleaned);
     } catch (e) {
-      return NextResponse.json({ error: "Failed to parse AI response" }, { status: 500 });
+      // Return the raw response so we can see what GPT said
+      return NextResponse.json({ error: "Failed to parse", raw: rawResponse }, { status: 500 });
     }
 
     const existing: any = (await redis.get(`fafsa:extracted:${sid}`)) || {};
