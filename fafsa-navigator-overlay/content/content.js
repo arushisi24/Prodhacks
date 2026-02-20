@@ -388,15 +388,17 @@ function autofillExtracted(data) {
   }
 
   function clickRadioByText(text) {
-    const els = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], label');
-    for (const el of els) {
-      if (el.textContent.trim().toLowerCase().includes(text.toLowerCase())) {
-        el.click();
-        return true;
+      const els = document.querySelectorAll('fsa-fafsa-radio-button-card');
+      for (const el of els) {
+        if (el.textContent.trim().toLowerCase() === text.toLowerCase()) {
+          const inner = el.querySelector('.radio-button-card-container');
+          if (inner) inner.click();
+          else el.click();
+          return true;
+        }
       }
+      return false;
     }
-    return false;
-  }
 
   // Direct ID mapping for Student tax return fields
   const ID_MAP = [
