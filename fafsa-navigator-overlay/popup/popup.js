@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // Show current profile status when popup opens
 chrome.storage.local.get(['fafsaProfile'], ({ fafsaProfile }) => {
   const status = document.getElementById('sync-status');
@@ -29,3 +30,6 @@ document.getElementById('sync-btn').addEventListener('click', async () => {
     status.textContent = '❌ Error connecting to website.';
   }
 });
+=======
+console.log('FAFSA Navigator: popup loaded');
+>>>>>>> 99a48be67d4730fd378007dabc0326afcf5188f2

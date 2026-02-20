@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // FAFSA Navigator - Guided Tour Content Script
 
 // ─── Step Definitions ───────────────────────────────────────────────────────
@@ -276,3 +277,6 @@ function autofill(fields) {
 }
 
 loadAndAutofill();
+=======
+console.log('FAFSA Navigator: content script loaded on', window.location.href);
+>>>>>>> 99a48be67d4730fd378007dabc0326afcf5188f2

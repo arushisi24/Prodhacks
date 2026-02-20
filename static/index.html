@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>FAFSA Buddy</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+
+  <body>
+    <div class="app-shell">
+      <!-- LEFT STEPPER -->
+      <aside class="sidebar">
+        <div class="sidebar-top">
+          <div class="brand">Getting to know you</div>
+          <div class="subtle">
+            Answer a few questions so we can personalize your checklist
+          </div>
+        </div>
+
+        <nav class="stepper" aria-label="FAFSA steps">
+          <button class="step active" data-step="goal">
+            <span class="step-num">1</span>
+            <span class="step-label">Goal &amp; basics</span>
+          </button>
+          <button class="step" data-step="household">
+            <span class="step-num">2</span>
+            <span class="step-label">Household / dependency</span>
+          </button>
+          <button class="step" data-step="taxes">
+            <span class="step-num">3</span>
+            <span class="step-label">Taxes &amp; income</span>
+          </button>
+          <button class="step" data-step="assets">
+            <span class="step-num">4</span>
+            <span class="step-label">Assets &amp; banking</span>
+          </button>
+          <button class="step" data-step="schools">
+            <span class="step-num">5</span>
+            <span class="step-label">Schools &amp; timing</span>
+          </button>
+          <a class="step link" href="/static/checklist.html">
+            <span class="step-num">6</span>
+            <span class="step-label">Checklist</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <a class="tiny-link" href="/static/dashboard.html">Developer dashboard</a>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="main">
+        <!-- TOP BAR -->
+        <header class="topbar">
+          <div class="title-wrap">
+            <div class="title">FAFSA Buddy</div>
+            <div class="pill">
+              <span class="lock">🔒</span>
+              <span>Private session</span>
+            </div>
+          </div>
+
+          <div class="progress-wrap">
+            <div class="progress-label">
+              <span>Progress</span>
+              <span id="progressPct">0%</span>
+            </div>
+            <div class="progress-bar">
+              <div id="progressFill" class="progress-fill" style="width: 0%"></div>
+            </div>
+          </div>
+        </header>
+
+        <!-- CHAT -->
+        <section class="chat-area">
+          <div id="chat" class="chat"></div>
+
+          <!-- “question card” style quick replies -->
+          <div id="quickReplies" class="quick-replies hidden">
+            <button class="chip" data-chip="Need help paying for college">Need help paying for college</button>
+            <button class="chip" data-chip="Not sure what I qualify for">Not sure what I qualify for</button>
+            <button class="chip" data-chip="School told me to apply">School told me to apply</button>
+            <button class="chip ghost" data-chip="I don't know">I don’t know</button>
+          </div>
+
+          <!-- INPUT -->
+          <div class="composer">
+            <input
+              id="msgInput"
+              class="input"
+              placeholder="Type your answer..."
+              autocomplete="off"
+            />
+            <button id="sendBtn" class="send" aria-label="Send">
+              ➤
+            </button>
+            <button id="resetBtn" class="reset" type="button">
+              Reset
+            </button>
+          </div>
+
+          <div class="fineprint">
+            Don’t enter SSNs, account/routing numbers, passwords, or PINs.
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="/static/app.js"></script>
+  </body>
+</html>
