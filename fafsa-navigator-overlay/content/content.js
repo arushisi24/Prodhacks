@@ -1,9 +1,3 @@
-<<<<<<< HEAD
-// FAFSA Navigator - Guided Tour Content Script
-
-// ─── Step Definitions ───────────────────────────────────────────────────────
-// Order matters: more specific URLs must come before broader ones.
-
 const STEPS = [
   {
     match: "fsa-id/create-account/verify",
@@ -277,6 +271,4 @@ function autofill(fields) {
 }
 
 loadAndAutofill();
-=======
-console.log('FAFSA Navigator: content script loaded on', window.location.href);
->>>>>>> 99a48be67d4730fd378007dabc0326afcf5188f2
+
