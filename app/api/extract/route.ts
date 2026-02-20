@@ -34,48 +34,69 @@ export async function POST(req: NextRequest) {
 
     const fileRes = await fetch(blobUrl);
     const buffer = Buffer.from(await fileRes.arrayBuffer());
-
     const isPdf = blobUrl.toLowerCase().includes(".pdf") || fileRes.headers.get("content-type")?.includes("pdf");
 
-    let userContent: any;
+    let rawResponse = "";
 
     if (isPdf) {
-      // Upload PDF to OpenAI Files API, then reference it
       const file = await openai.files.create({
         file: await toFile(buffer, "tax_document.pdf"),
         purpose: "assistants",
       });
 
-      userContent = [
-        {
-          type: "file",
-          file: { file_id: file.id }
-        },
-        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
-      ];
+      const assistant = await openai.beta.assistants.create({
+        model: "gpt-4o",
+        instructions: SYSTEM_PROMPT,
+        tools: [{ type: "file_search" }],
+      });
+
+      const thread = await openai.beta.threads.create({
+        messages: [{
+          role: "user",
+          content: `Extract all FAFSA-relevant financial data from the attached ${fileType || "tax document"}. Return ONLY valid JSON.`,
+          attachments: [{ file_id: file.id, tools: [{ type: "file_search" }] }],
+        }],
+      });
+
+      const run = await openai.beta.threads.runs.createAndPoll(thread.id, {
+        assistant_id: assistant.id,
+      });
+
+      if (run.status === "completed") {
+        const messages = await openai.beta.threads.messages.list(thread.id);
+        const reply = messages.data[0];
+        if (reply && reply.content[0].type === "text") {
+          rawResponse = reply.content[0].text.value;
+        }
+      }
+
+      await openai.beta.assistants.delete(assistant.id).catch(() => {});
+      await openai.files.delete(file.id).catch(() => {});
     } else {
       const base64 = buffer.toString("base64");
       const mime = blobUrl.toLowerCase().includes(".png") ? "image/png" : "image/jpeg";
-      userContent = [
-        { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
-        { type: "text", text: `Extract all FAFSA-relevant financial data from this ${fileType || "tax document"}. Return ONLY valid JSON.` }
-      ];
+
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4o",
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          { role: "user", content: [
+            { type: "image_url", image_url: { url: `data:${mime};base64,${base64}` } },
+            { type: "text", text: `Extract all FAFSA-relevant financial data. Return ONLY valid JSON.` }
+          ]}
+        ],
+        max_tokens: 1000,
+      });
+      rawResponse = completion.choices[0].message.content ?? "";
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o",
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent }
-      ],
-      max_tokens: 1000,
-    });
-
-    const rawResponse = completion.choices[0].message.content ?? "";
+    if (!rawResponse) {
+      return NextResponse.json({ error: "No response from AI" }, { status: 500 });
+    }
 
     let extracted: any = {};
     try {
-      const cleaned = rawResponse.replace(/```json|```/g, "").trim();
+      const cleaned = rawResponse.replace(/```json|```/g, "").replace(/【[^】]*】/g, "").trim();
       extracted = JSON.parse(cleaned);
     } catch (e) {
       return NextResponse.json({ error: "Failed to parse", raw: rawResponse }, { status: 500 });
