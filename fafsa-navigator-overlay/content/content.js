@@ -430,10 +430,13 @@ function autofillExtracted(data) {
   ];
 
   function fillByIds() {
+    console.log('FILL BY IDS RUNNING');
     for (const { id, key } of ID_MAP) {
       const value = data[key];
       if (value == null) continue;
       const el = document.getElementById(id);
+      console.log('LOOKING FOR', id, 'VALUE', value, 'FOUND', !!el);
+
       if (el) {
         fillInput(el, value);
         el.style.outline = '2px solid #3a7bd5';
