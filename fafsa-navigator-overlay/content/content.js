@@ -1,4 +1,5 @@
 console.log('FAFSA BUDDY CONTENT SCRIPT LOADED');
+//guide walk-through windows, recongizes url identifiers 
 const STEPS = [
   {
     match: "fsa-id/create-account/verify",
@@ -93,7 +94,7 @@ const STEPS = [
   },
 ];
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+//helpers
 
 function getCurrentStep() {
   const url = window.location.href;
@@ -155,8 +156,7 @@ function placeArrow(el) {
   document.body.appendChild(arrow);
 }
 
-// ─── Sidebar Injection ────────────────────────────────────────────────────────
-
+// side-bar inserts
 function injectSidebar(stepData) {
   const existing = document.getElementById("fafsa-sidebar");
   if (existing) existing.remove();
@@ -195,13 +195,13 @@ function injectSidebar(stepData) {
   document.body.appendChild(sidebar);
   document.body.classList.add("fafsa-open");
 
-  // ── Expand tab ────────────────────────────────────────────────────
+  //pull out tab
   const expandTab = document.createElement("button");
   expandTab.id = "fafsa-expand-tab";
   expandTab.innerHTML = "&#8249;";
   document.body.appendChild(expandTab);
 
-  // ── Toggle collapse ───────────────────────────────────────────────
+  //pull in tab
   document.getElementById("fafsa-toggle").addEventListener("click", (e) => {
     e.stopPropagation();
     sidebar.classList.add("collapsed");
@@ -225,7 +225,7 @@ function injectSidebar(stepData) {
   }
 }
 
-// ─── Init ─────────────────────────────────────────────────────────────────────
+// Initialization and URL change handling
 
 function init() {
   const step = getCurrentStep();
@@ -241,17 +241,19 @@ function init() {
 
 init();
 
-// Re-run on URL changes (studentaid.gov is a SPA)
+// refresh to fill-in
 let lastUrl = location.href;
 new MutationObserver(() => {
   const currentUrl = location.href;
   if (currentUrl !== lastUrl) {
     lastUrl = currentUrl;
     setTimeout(init, 1200);
+    setTimeout(loadAndAutofill, 1500); 
+    setTimeout(loadAndAutofillExtracted, 1500); //re-runs autofill functions 
   }
 }).observe(document, { subtree: true, childList: true });
 
-// ─── Autofill ─────────────────────────────────────────────────────────────────
+// autofill from fafsaprofile
 
 async function loadAndAutofill() {
   chrome.storage.local.get(['fafsaProfile'], ({ fafsaProfile }) => {
@@ -263,7 +265,7 @@ async function loadAndAutofill() {
 function autofill(fields) {
   const url = window.location.href;
 
-  // ── Helper: fill a text input and trigger React events ────────────
+  // helper that fills a text input and trigger react events 
   function fillInput(el, value) {
     if (!el || !value) return;
     const nativeSetter = Object.getOwnPropertyDescriptor(
@@ -274,7 +276,7 @@ function autofill(fields) {
     el.dispatchEvent(new Event('change', { bubbles: true }));
   }
 
-  // ── Helper: click a radio/button by matching text ─────────────────
+  // click radio by matching text
   function clickByText(text) {
     const els = document.querySelectorAll('fsa-fafsa-radio-button-card, div[class*="fsa-radio-button"], button, label');
     for (const el of els) {
@@ -286,7 +288,7 @@ function autofill(fields) {
     return false;
   }
 
-  // ── Helper: auto-click blue continue button ───────────────────────
+  // helper: autoclick blue button (doesn't work yet)
   function clickContinue() {
     const btns = document.querySelectorAll('button');
     for (const btn of btns) {
@@ -298,24 +300,20 @@ function autofill(fields) {
     }
   }
 
-  // ── Personal circumstances — auto-click continue ──────────────────
+  // helper: auto-select personal circumstances (not yet implemented)
   if (url.includes('personal-circumstances')) {
     setTimeout(() => {
-      // Auto-select marital status
+      // auto-select marital status
       if (fields.independent === false) {
         clickByText('single (never married)');
       }
-      // Point to continue — don't auto-click, let user review
     }, 1500);
   }
 
-  // ── Demographics — just point to continue ────────────────────────
-  // No autofill needed, guide points to continue button
 
-  // ── Finances ─────────────────────────────────────────────────────
+  // finance inserts
   if (url.includes('student/finances') || url.includes('finances')) {
     setTimeout(() => {
-      // Did student file taxes?
       if (fields.filed_taxes === true || fields.has_w2 === true) {
         clickByText('already completed');
         clickByText('will file');
@@ -325,7 +323,7 @@ function autofill(fields) {
     }, 1500);
   }
 
- // ── Assets ───────────────────────────────────────────────────────
+ // assetts
   if (url.includes('student/assets') || url.includes('assets')) {
     const assetMap = {
       'under_5k': 2500,
@@ -362,7 +360,7 @@ function autofill(fields) {
     setTimeout(tryFillAssets, 2000);
   }
 
-  // ── Colleges ─────────────────────────────────────────────────────
+  // colleges
   if (url.includes('student/colleges') || url.includes('colleges')) {
     setTimeout(() => {
       if (fields.schools && fields.schools.length > 0) {
@@ -375,7 +373,7 @@ function autofill(fields) {
     }, 1500);
   }
 
-  // ── General: fill name/dob/email on any page ──────────────────────
+  // general filling (not yet working well)
   const fieldMap = [
     { selector: 'input[name="firstName"], input[id*="first"]', value: fields.student_name?.split(' ')[0] },
     { selector: 'input[name="lastName"], input[id*="last"]', value: fields.student_name?.split(' ').slice(1).join(' ') },
@@ -390,7 +388,7 @@ function autofill(fields) {
     fillInput(el, value);
   }
 
-  // ── Role selection ────────────────────────────────────────────────
+  // Choose role
   if (url.includes('roles')) {
     const role = fields.user_role;
     if (role) {
@@ -408,8 +406,7 @@ function autofill(fields) {
 }
 
 loadAndAutofill();
-// ─── Extracted Financial Data Autofill ────────────────────────────────────────
-
+//extract autofill 
 function loadAndAutofillExtracted() {
   console.log('LOAD AND AUTOFILL CALLED');
   chrome.storage.local.get(['fafsaExtracted'], ({ fafsaExtracted }) => {
