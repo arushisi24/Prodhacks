@@ -1,3 +1,4 @@
+console.log('FAFSA BUDDY CONTENT SCRIPT LOADED');
 const STEPS = [
   {
     match: "fsa-id/create-account/verify",
