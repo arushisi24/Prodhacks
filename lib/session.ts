@@ -7,7 +7,9 @@ export type UserRole = "student" | "parent";
 
 export interface CollectedFields {
   user_role?: UserRole;
-  award_year?: string;
+  student_name?: string;
+  student_email?: string;
+  student_dob?: string;
   independent?: boolean;
   household_size?: number;
   income_range?: string;
@@ -29,9 +31,9 @@ export interface SessionData {
   fields: CollectedFields;
 }
 
-// user_role was added, so dependent = 15 fields, independent = 14 (no parent_bank_name)
-const DEPENDENT_FIELDS = 15;
-const INDEPENDENT_FIELDS = 14;
+// 17 fields for dependent students (all fields), 16 for independent (no parent_bank_name)
+const DEPENDENT_FIELDS = 17;
+const INDEPENDENT_FIELDS = 16;
 
 export function computeProgress(fields: CollectedFields): number {
   const SKIP = fields.independent === true ? new Set(["parent_bank_name", "uploads"]) : new Set(["uploads"]);
